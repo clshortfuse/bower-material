@@ -2,7 +2,7 @@
  * Angular Material Design
  * https://github.com/angular/material
  * @license MIT
- * v1.1.0-rc2-master-c48df16
+ * v1.1.0-rc2
  */
 goog.provide('ng.material.components.autocomplete');
 goog.require('ng.material.components.icon');
@@ -464,12 +464,17 @@ function MdAutocompleteCtrl ($scope, $element, $mdUtil, $mdConstant, $mdTheming,
         select(ctrl.index);
         break;
       case $mdConstant.KEY_CODE.ESCAPE:
+        if ($scope.noClearOnEscape && $scope.noBlurOnEscape) //nothing to capture
+          break;
+
         event.stopPropagation();
         event.preventDefault();
-        if ($scope.searchText) clearValue();
 
-        // Force the component to blur if they hit escape
-        doBlur(true);
+        if (!$scope.noClearOnEscape && $scope.searchText)
+          clearValue();
+
+        if (!$scope.noBlurOnEscape)
+          doBlur(true); // Force the component to blur if they hit escape
 
         break;
       default:
@@ -872,6 +877,8 @@ angular
  *     the item if the search text is an exact match
  * @param {boolean=} md-match-case-insensitive When set and using `md-select-on-match`, autocomplete
  *     will select on case-insensitive match
+ * @param {boolean=} md-no-blur-on-escape If true, focus will not blurred on escape keydown
+ * @param {boolean=} md-no-clear-on-escape If true, input will not cleared on escape keydown
  *
  * @usage
  * ### Basic Example
@@ -953,7 +960,9 @@ function MdAutocomplete () {
       floatingLabel:    '@?mdFloatingLabel',
       autoselect:       '=?mdAutoselect',
       menuClass:        '@?mdMenuClass',
-      inputId:          '@?mdInputId'
+      inputId:          '@?mdInputId',
+      noBlurOnEscape:   '=?mdNoBlurOnEscape',
+      noClearOnEscape:  '=?mdNoClearOnEscape'
     },
     link: function(scope, element, attrs, controller) {
       // Retrieve the state of using a md-not-found template by using our attribute, which will
