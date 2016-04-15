@@ -2,7 +2,7 @@
  * Angular Material Design
  * https://github.com/angular/material
  * @license MIT
- * v1.1.0-rc2
+ * v1.1.0-rc4
  */
 /*  Only used with Theme processes */
 html.md-THEME_NAME-theme, body.md-THEME_NAME-theme {
@@ -42,6 +42,10 @@ md-input-container > md-select {
   -ms-flex-order: 2;
       order: 2; }
 
+md-input-container.md-input-has-label > md-select {
+  padding-top: 24px;
+  padding-bottom: 11px; }
+
 md-select {
   display: -ms-flexbox;
   display: flex;
@@ -59,24 +63,24 @@ md-select {
     cursor: pointer; }
   md-select:not([disabled]).ng-invalid.ng-dirty ._md-select-value {
     border-bottom: 2px solid;
-    padding-bottom: 0; }
+    padding-bottom: 5px; }
   md-select:not([disabled]):focus ._md-select-value {
     border-bottom-width: 2px;
     border-bottom-style: solid;
-    padding-bottom: 0; }
+    padding-bottom: 5px; }
 
 ._md-select-value {
   display: -ms-flexbox;
   display: flex;
   -ms-flex-align: center;
       align-items: center;
-  padding: 2px 2px 1px;
+  padding: 4px 0px 6px 0px;
   border-bottom-width: 1px;
   border-bottom-style: solid;
   background-color: transparent;
   position: relative;
   box-sizing: content-box;
-  min-width: 64px;
+  min-width: 88px;
   min-height: 26px;
   -ms-flex-positive: 1;
       flex-grow: 1; }
@@ -104,10 +108,12 @@ md-select {
     display: block;
     content: '\25BC';
     position: relative;
-    top: 2px;
+    right: -7px;
+    font-size: 16px;
+    top: 1px;
     speak: none;
-    -webkit-transform: scaleY(0.6) scaleX(1);
-            transform: scaleY(0.6) scaleX(1); }
+    -webkit-transform: scaleY(0.5);
+            transform: scaleY(0.5); }
   ._md-select-value._md-select-placeholder {
     display: -ms-flexbox;
     display: flex;
@@ -115,7 +121,6 @@ md-select {
         order: 1;
     pointer-events: none;
     -webkit-font-smoothing: antialiased;
-    padding-left: 2px;
     z-index: 1; }
 
 md-select-menu {
@@ -173,8 +178,7 @@ md-option {
     width: auto;
     white-space: nowrap;
     overflow: hidden;
-    text-overflow: ellipsis;
-    font-size: 16px; }
+    text-overflow: ellipsis; }
 
 md-optgroup {
   display: block; }
@@ -203,13 +207,13 @@ md-select-menu[multiple] md-option._md-checkbox-enabled {
     padding-right: 40px; }
   md-select-menu[multiple] md-option._md-checkbox-enabled ._md-container {
     position: absolute;
-    top: 50%;
+    top: 18px;
     -webkit-transform: translateY(-50%);
             transform: translateY(-50%);
     box-sizing: border-box;
     display: inline-block;
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
     left: 0;
     right: auto; }
     [dir=rtl] md-select-menu[multiple] md-option._md-checkbox-enabled ._md-container {
@@ -253,8 +257,8 @@ md-select-menu[multiple] md-option._md-checkbox-enabled {
     position: absolute;
     top: 0;
     left: 0;
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
     border-width: 2px;
     border-style: solid;
     border-radius: 2px; }
@@ -265,11 +269,11 @@ md-select-menu[multiple] md-option._md-checkbox-enabled {
       -webkit-transform: rotate(45deg);
               transform: rotate(45deg);
       position: absolute;
-      left: 6.66667px;
-      top: 2.22222px;
+      left: 6px;
+      top: 2px;
       display: table;
-      width: 6.66667px;
-      height: 13.33333px;
+      width: 6px;
+      height: 12px;
       border-width: 2px;
       border-style: solid;
       border-top: 0;
@@ -285,7 +289,7 @@ md-select-menu[multiple] md-option._md-checkbox-enabled {
     -webkit-transform: translate(-50%, -50%);
             transform: translate(-50%, -50%);
     display: table;
-    width: 12px;
+    width: 10.8px;
     height: 2px;
     border-width: 2px;
     border-style: solid;

@@ -2,7 +2,7 @@
  * Angular Material Design
  * https://github.com/angular/material
  * @license MIT
- * v1.1.0-rc2
+ * v1.1.0-rc4
  */
 /*  Only used with Theme processes */
 html.md-THEME_NAME-theme, body.md-THEME_NAME-theme {
@@ -92,15 +92,15 @@ md-autocomplete {
     height: 40px; }
     md-autocomplete md-autocomplete-wrap.md-menu-showing {
       z-index: 51; }
+    md-autocomplete md-autocomplete-wrap md-input-container.md-input-has-messages md-progress-linear.md-inline {
+      bottom: 16px; }
     md-autocomplete md-autocomplete-wrap md-progress-linear {
       position: absolute;
       bottom: -2px;
       left: 0; }
       md-autocomplete md-autocomplete-wrap md-progress-linear.md-inline {
-        bottom: 40px;
-        right: 2px;
-        left: 2px;
-        width: auto; }
+        bottom: 8px;
+        width: 100%; }
       md-autocomplete md-autocomplete-wrap md-progress-linear ._md-mode-indeterminate {
         position: absolute;
         top: 0;

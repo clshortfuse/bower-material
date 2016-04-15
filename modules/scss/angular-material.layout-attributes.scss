@@ -73,7 +73,7 @@ $swift-linear: all $swift-linear-duration $swift-linear-timing-function !default
 $button-fab-width: rem(5.600) !default;
 $button-fab-height: rem(5.600) !default;
 $button-fab-padding: rem(1.60) !default;
-$checkbox-width: 20px !default;
+$checkbox-width: 18px !default;
 $checkbox-height: $checkbox-width !default;
 $checkbox-border-radius: 2px !default;
 $checkbox-border-width: 2px !default;
@@ -300,7 +300,7 @@ $layout-breakpoint-lg:     1920px !default;
   $border-radius: $checkbox-border-radius) {
   ._md-container {
     position: absolute;
-    top: 50%;
+    top: $checkbox-height;
     transform: translateY(-50%);
 
     box-sizing: border-box;

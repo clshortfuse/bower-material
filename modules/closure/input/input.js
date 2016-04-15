@@ -2,7 +2,7 @@
  * Angular Material Design
  * https://github.com/angular/material
  * @license MIT
- * v1.1.0-rc2
+ * v1.1.0-rc4
  */
 goog.provide('ng.material.components.input');
 goog.require('ng.material.core');
@@ -150,6 +150,8 @@ function labelDirective() {
       if (!containerCtrl || attr.mdNoFloat || element.hasClass('_md-container-ignore')) return;
 
       containerCtrl.label = element;
+      containerCtrl.element.toggleClass('md-input-has-label', true);
+      
       scope.$on('$destroy', function() {
         containerCtrl.label = null;
       });
@@ -432,17 +434,20 @@ function inputTextareaDirective($mdUtil, $window, $mdAria, $timeout) {
           .attr('rows', 1);
 
         if (minRows) {
+          var paddingSize = parseInt(window.getComputedStyle(node)['padding-bottom']) || 0;
           if (!lineHeight) {
             node.style.minHeight = 0;
             lineHeight = element.prop('clientHeight');
+            if (lineHeight)
+              lineHeight -= paddingSize;
             node.style.minHeight = null;
           }
 
           var newRows = Math.round( Math.round(getHeight() / lineHeight) );
           var rowsToSet = Math.min(newRows, minRows);
-
+          
           element
-            .css('height', lineHeight * rowsToSet + 'px')
+            .css('height', lineHeight * rowsToSet + paddingSize + 'px')
             .attr('rows', rowsToSet)
             .toggleClass('_md-textarea-scrollable', newRows >= minRows);
 
@@ -564,7 +569,7 @@ function mdMaxlengthDirective($animate, $mdUtil) {
 
       // Force the value into a string since it may be a number,
       // which does not have a length property.
-      charCountEl.text(String(element.val() || value || '').length + '/' + maxlength);
+      charCountEl.text(String(element.val() || value || '').length + ' / ' + maxlength);
       return value;
     }
   }
@@ -603,6 +608,7 @@ function placeholderDirective($log) {
 
       inputContainer.element.addClass('md-icon-float');
       inputContainer.element.prepend(placeholder);
+      inputContainer.element.toggleClass('md-input-has-label', true);
     }
   }
 }
@@ -715,6 +721,8 @@ function ngMessagesDirective() {
     if (attrs.mdAutoHide == 'false' || hasVisibiltyDirective(attrs)) {
       element.toggleClass('md-auto-hide', false);
     }
+
+    inputContainer.element.toggleClass('md-input-has-messages', true);
   }
 
   function hasVisibiltyDirective(attrs) {
