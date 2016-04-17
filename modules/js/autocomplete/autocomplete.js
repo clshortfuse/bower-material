@@ -653,8 +653,7 @@ function MdAutocompleteCtrl ($scope, $element, $mdUtil, $mdConstant, $mdTheming,
     // Reset our variables
     ctrl.index = 0;
     ctrl.matches = [];
-    if (clearText || (clearText === undefined))
-    {
+    if (clearText || (clearText === undefined)) {
         $scope.searchText = '';
     
         // Per http://www.w3schools.com/jsref/event_oninput.asp
@@ -663,6 +662,10 @@ function MdAutocompleteCtrl ($scope, $element, $mdUtil, $mdConstant, $mdTheming,
         elements.input.dispatchEvent(eventObj);
     
         elements.input.focus();
+    }
+    else {
+        // If we're not clearing text, no change event will trigger, so cancel loading
+        setLoading(false);   
     }
   }
 
