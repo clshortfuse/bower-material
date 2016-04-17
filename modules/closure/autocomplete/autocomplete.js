@@ -468,7 +468,7 @@ function MdAutocompleteCtrl ($scope, $element, $mdUtil, $mdConstant, $mdTheming,
         // Only return if dropdown is hidden and not loading
         // Only return if text clearing is disabled or text is already cleared
         if (!!$scope.noBlurOnEscape && ctrl.hidden && !ctrl.loading && (!!$scope.noClearOnEscape || !$scope.searchText))
-            return; 
+          return; 
 
         event.stopPropagation();
         event.preventDefault();
@@ -477,6 +477,8 @@ function MdAutocompleteCtrl ($scope, $element, $mdUtil, $mdConstant, $mdTheming,
 
         if (!$scope.noBlurOnEscape)
           doBlur(true); // Force the component to blur if they hit escape
+        else
+          ctrl.hidden = true; // manually hide (needed for mdNotFound support)
 
         break;
       default:
