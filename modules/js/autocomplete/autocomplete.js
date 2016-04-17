@@ -472,8 +472,7 @@ function MdAutocompleteCtrl ($scope, $element, $mdUtil, $mdConstant, $mdTheming,
         event.stopPropagation();
         event.preventDefault();
 
-        if (!$scope.noClearOnEscape && $scope.searchText)
-          clearValue(true);
+        clearValue(!$scope.noClearOnEscape && $scope.searchText);
 
         if (!$scope.noBlurOnEscape)
           doBlur(true); // Force the component to blur if they hit escape

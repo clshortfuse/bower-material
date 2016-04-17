@@ -1483,117 +1483,633 @@ angular.element.prototype.blur = angular.element.prototype.blur || function() {
   };
 
 
+// Polyfill angular < 1.4 (provide $animateCss)
+angular
+  .module('material.core')
+  .factory('$$mdAnimate', ["$q", "$timeout", "$mdConstant", "$animateCss", function($q, $timeout, $mdConstant, $animateCss){
 
-angular.module('material.core')
-  .service('$mdAria', AriaService);
+     // Since $$mdAnimate is injected into $mdUtil... use a wrapper function
+     // to subsequently inject $mdUtil as an argument to the AnimateDomUtils
 
-/*
- * ngInject
+     return function($mdUtil) {
+       return AnimateDomUtils( $mdUtil, $q, $timeout, $mdConstant, $animateCss);
+     };
+   }]);
+
+/**
+ * Factory function that requires special injections
  */
-function AriaService($$rAF, $log, $window, $interpolate) {
-
-  return {
-    expect: expect,
-    expectAsync: expectAsync,
-    expectWithText: expectWithText
-  };
-
-  /**
-   * Check if expected attribute has been specified on the target element or child
-   * @param element
-   * @param attrName
-   * @param {optional} defaultValue What to set the attr to if no value is found
-   */
-  function expect(element, attrName, defaultValue) {
-
-    var node = angular.element(element)[0] || element;
-
-    // if node exists and neither it nor its children have the attribute
-    if (node &&
-       ((!node.hasAttribute(attrName) ||
-        node.getAttribute(attrName).length === 0) &&
-        !childHasAttribute(node, attrName))) {
-
-      defaultValue = angular.isString(defaultValue) ? defaultValue.trim() : '';
-      if (defaultValue.length) {
-        element.attr(attrName, defaultValue);
-      } else {
-        $log.warn('ARIA: Attribute "', attrName, '", required for accessibility, is missing on node:', node);
-      }
-
-    }
-  }
-
-  function expectAsync(element, attrName, defaultValueGetter) {
-    // Problem: when retrieving the element's contents synchronously to find the label,
-    // the text may not be defined yet in the case of a binding.
-    // There is a higher chance that a binding will be defined if we wait one frame.
-    $$rAF(function() {
-        expect(element, attrName, defaultValueGetter());
-    });
-  }
-
-  function expectWithText(element, attrName) {
-    var content = getText(element) || "";
-    var hasBinding = content.indexOf($interpolate.startSymbol()) > -1;
-
-    if ( hasBinding ) {
-      expectAsync(element, attrName, function() {
-        return getText(element);
+function AnimateDomUtils($mdUtil, $q, $timeout, $mdConstant, $animateCss) {
+  var self;
+  return self = {
+    /**
+     *
+     */
+    translate3d : function( target, from, to, options ) {
+      return $animateCss(target,{
+        from:from,
+        to:to,
+        addClass:options.transitionInClass
+      })
+      .start()
+      .then(function(){
+          // Resolve with reverser function...
+          return reverseTranslate;
       });
-    } else {
-      expect(element, attrName, content);
-    }
-  }
 
-  function getText(element) {
-    element = element[0] || element;
-    var walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT, null, false);
-    var text = '';
+      /**
+       * Specific reversal of the request translate animation above...
+       */
+      function reverseTranslate (newFrom) {
+        return $animateCss(target, {
+           to: newFrom || from,
+           addClass: options.transitionOutClass,
+           removeClass: options.transitionInClass
+        }).start();
 
-    var node;
-    while (node = walker.nextNode()) {
-      if (!isAriaHiddenNode(node)) {
-        text += node.textContent;
       }
+  },
+
+    /**
+     * Listen for transitionEnd event (with optional timeout)
+     * Announce completion or failure via promise handlers
+     */
+    waitTransitionEnd: function (element, opts) {
+        var TIMEOUT = 3000; // fallback is 3 secs
+
+        return $q(function(resolve, reject){
+          opts = opts || { };
+
+          var timer = $timeout(finished, opts.timeout || TIMEOUT);
+          element.on($mdConstant.CSS.TRANSITIONEND, finished);
+
+          /**
+           * Upon timeout or transitionEnd, reject or resolve (respectively) this promise.
+           * NOTE: Make sure this transitionEnd didn't bubble up from a child
+           */
+          function finished(ev) {
+            if ( ev && ev.target !== element[0]) return;
+
+            if ( ev  ) $timeout.cancel(timer);
+            element.off($mdConstant.CSS.TRANSITIONEND, finished);
+
+            // Never reject since ngAnimate may cause timeouts due missed transitionEnd events
+            resolve();
+
+          }
+
+        });
+      },
+
+    /**
+     * Calculate the zoom transform from dialog to origin.
+     *
+     * We use this to set the dialog position immediately;
+     * then the md-transition-in actually translates back to
+     * `translate3d(0,0,0) scale(1.0)`...
+     *
+     * NOTE: all values are rounded to the nearest integer
+     */
+    calculateZoomToOrigin: function (element, originator) {
+      var origin = originator.element;
+      var bounds = originator.bounds;
+
+      var zoomTemplate = "translate3d( {centerX}px, {centerY}px, 0 ) scale( {scaleX}, {scaleY} )";
+      var buildZoom = angular.bind(null, $mdUtil.supplant, zoomTemplate);
+      var zoomStyle = buildZoom({centerX: 0, centerY: 0, scaleX: 0.5, scaleY: 0.5});
+
+      if (origin || bounds) {
+        var originBnds = origin ? self.clientRect(origin) || currentBounds() : self.copyRect(bounds);
+        var dialogRect = self.copyRect(element[0].getBoundingClientRect());
+        var dialogCenterPt = self.centerPointFor(dialogRect);
+        var originCenterPt = self.centerPointFor(originBnds);
+
+        // Build the transform to zoom from the dialog center to the origin center
+
+        zoomStyle = buildZoom({
+          centerX: originCenterPt.x - dialogCenterPt.x,
+          centerY: originCenterPt.y - dialogCenterPt.y,
+          scaleX: Math.round(100 * Math.min(0.5, originBnds.width / dialogRect.width))/100,
+          scaleY: Math.round(100 * Math.min(0.5, originBnds.height / dialogRect.height))/100
+        });
+      }
+
+      return zoomStyle;
+
+      /**
+       * This is a fallback if the origin information is no longer valid, then the
+       * origin bounds simply becomes the current bounds for the dialogContainer's parent
+       */
+      function currentBounds() {
+        var cntr = element ? element.parent() : null;
+        var parent = cntr ? cntr.parent() : null;
+
+        return parent ? self.clientRect(parent) : null;
+      }
+    },
+
+    /**
+     * Enhance raw values to represent valid css stylings...
+     */
+    toCss : function( raw ) {
+      var css = { };
+      var lookups = 'left top right bottom width height x y min-width min-height max-width max-height';
+
+      angular.forEach(raw, function(value,key) {
+        if ( angular.isUndefined(value) ) return;
+
+        if ( lookups.indexOf(key) >= 0 ) {
+          css[key] = value + 'px';
+        } else {
+          switch (key) {
+            case 'transition':
+              convertToVendor(key, $mdConstant.CSS.TRANSITION, value);
+              break;
+            case 'transform':
+              convertToVendor(key, $mdConstant.CSS.TRANSFORM, value);
+              break;
+            case 'transformOrigin':
+              convertToVendor(key, $mdConstant.CSS.TRANSFORM_ORIGIN, value);
+              break;
+            default:
+              css[key] = value;
+          }
+        }
+      });
+
+      return css;
+
+      function convertToVendor(key, vendor, value) {
+        angular.forEach(vendor.split(' '), function (key) {
+          css[key] = value;
+        });
+      }
+    },
+
+    /**
+     * Convert the translate CSS value to key/value pair(s).
+     */
+    toTransformCss: function (transform, addTransition, transition) {
+      var css = {};
+      angular.forEach($mdConstant.CSS.TRANSFORM.split(' '), function (key) {
+        css[key] = transform;
+      });
+
+      if (addTransition) {
+        transition = transition || "all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1) !important";
+        css['transition'] = transition;
+      }
+
+      return css;
+    },
+
+    /**
+     *  Clone the Rect and calculate the height/width if needed
+     */
+    copyRect: function (source, destination) {
+      if (!source) return null;
+
+      destination = destination || {};
+
+      angular.forEach('left top right bottom width height'.split(' '), function (key) {
+        destination[key] = Math.round(source[key])
+      });
+
+      destination.width = destination.width || (destination.right - destination.left);
+      destination.height = destination.height || (destination.bottom - destination.top);
+
+      return destination;
+    },
+
+    /**
+     * Calculate ClientRect of element; return null if hidden or zero size
+     */
+    clientRect: function (element) {
+      var bounds = angular.element(element)[0].getBoundingClientRect();
+      var isPositiveSizeClientRect = function (rect) {
+        return rect && (rect.width > 0) && (rect.height > 0);
+      };
+
+      // If the event origin element has zero size, it has probably been hidden.
+      return isPositiveSizeClientRect(bounds) ? self.copyRect(bounds) : null;
+    },
+
+    /**
+     *  Calculate 'rounded' center point of Rect
+     */
+    centerPointFor: function (targetRect) {
+      return targetRect ? {
+        x: Math.round(targetRect.left + (targetRect.width / 2)),
+        y: Math.round(targetRect.top + (targetRect.height / 2))
+      } : { x : 0, y : 0 };
     }
 
-    return text.trim() || '';
+  };
+};
 
-    function isAriaHiddenNode(node) {
-      while (node.parentNode && (node = node.parentNode) !== element) {
-        if (node.getAttribute && node.getAttribute('aria-hidden') === 'true') {
-          return true;
+
+"use strict";
+
+if (angular.version.minor >= 4) {
+  angular.module('material.core.animate', []);
+} else {
+(function() {
+
+  var forEach = angular.forEach;
+
+  var WEBKIT = angular.isDefined(document.documentElement.style.WebkitAppearance);
+  var TRANSITION_PROP = WEBKIT ? 'WebkitTransition' : 'transition';
+  var ANIMATION_PROP = WEBKIT ? 'WebkitAnimation' : 'animation';
+  var PREFIX = WEBKIT ? '-webkit-' : '';
+
+  var TRANSITION_EVENTS = (WEBKIT ? 'webkitTransitionEnd ' : '') + 'transitionend';
+  var ANIMATION_EVENTS = (WEBKIT ? 'webkitAnimationEnd ' : '') + 'animationend';
+
+  var $$ForceReflowFactory = ['$document', function($document) {
+    return function() {
+      return $document[0].body.clientWidth + 1;
+    }
+  }];
+
+  var $$rAFMutexFactory = ['$$rAF', function($$rAF) {
+    return function() {
+      var passed = false;
+      $$rAF(function() {
+        passed = true;
+      });
+      return function(fn) {
+        passed ? fn() : $$rAF(fn);
+      };
+    };
+  }];
+
+  var $$AnimateRunnerFactory = ['$q', '$$rAFMutex', function($q, $$rAFMutex) {
+    var INITIAL_STATE = 0;
+    var DONE_PENDING_STATE = 1;
+    var DONE_COMPLETE_STATE = 2;
+
+    function AnimateRunner(host) {
+      this.setHost(host);
+
+      this._doneCallbacks = [];
+      this._runInAnimationFrame = $$rAFMutex();
+      this._state = 0;
+    }
+
+    AnimateRunner.prototype = {
+      setHost: function(host) {
+        this.host = host || {};
+      },
+
+      done: function(fn) {
+        if (this._state === DONE_COMPLETE_STATE) {
+          fn();
+        } else {
+          this._doneCallbacks.push(fn);
+        }
+      },
+
+      progress: angular.noop,
+
+      getPromise: function() {
+        if (!this.promise) {
+          var self = this;
+          this.promise = $q(function(resolve, reject) {
+            self.done(function(status) {
+              status === false ? reject() : resolve();
+            });
+          });
+        }
+        return this.promise;
+      },
+
+      then: function(resolveHandler, rejectHandler) {
+        return this.getPromise().then(resolveHandler, rejectHandler);
+      },
+
+      'catch': function(handler) {
+        return this.getPromise()['catch'](handler);
+      },
+
+      'finally': function(handler) {
+        return this.getPromise()['finally'](handler);
+      },
+
+      pause: function() {
+        if (this.host.pause) {
+          this.host.pause();
+        }
+      },
+
+      resume: function() {
+        if (this.host.resume) {
+          this.host.resume();
+        }
+      },
+
+      end: function() {
+        if (this.host.end) {
+          this.host.end();
+        }
+        this._resolve(true);
+      },
+
+      cancel: function() {
+        if (this.host.cancel) {
+          this.host.cancel();
+        }
+        this._resolve(false);
+      },
+
+      complete: function(response) {
+        var self = this;
+        if (self._state === INITIAL_STATE) {
+          self._state = DONE_PENDING_STATE;
+          self._runInAnimationFrame(function() {
+            self._resolve(response);
+          });
+        }
+      },
+
+      _resolve: function(response) {
+        if (this._state !== DONE_COMPLETE_STATE) {
+          forEach(this._doneCallbacks, function(fn) {
+            fn(response);
+          });
+          this._doneCallbacks.length = 0;
+          this._state = DONE_COMPLETE_STATE;
         }
       }
-    }
-  }
+    };
 
-  function childHasAttribute(node, attrName) {
-    var hasChildren = node.hasChildNodes(),
-        hasAttr = false;
+    return AnimateRunner;
+  }];
 
-    function isHidden(el) {
-      var style = el.currentStyle ? el.currentStyle : $window.getComputedStyle(el);
-      return (style.display === 'none');
-    }
+  angular
+    .module('material.core.animate', [])
+    .factory('$$forceReflow', $$ForceReflowFactory)
+    .factory('$$AnimateRunner', $$AnimateRunnerFactory)
+    .factory('$$rAFMutex', $$rAFMutexFactory)
+    .factory('$animateCss', ['$window', '$$rAF', '$$AnimateRunner', '$$forceReflow', '$$jqLite', '$timeout',
+                     function($window,   $$rAF,   $$AnimateRunner,   $$forceReflow,   $$jqLite,   $timeout) {
 
-    if (hasChildren) {
-      var children = node.childNodes;
-      for (var i=0; i < children.length; i++) {
-        var child = children[i];
-        if (child.nodeType === 1 && child.hasAttribute(attrName)) {
-          if (!isHidden(child)) {
-            hasAttr = true;
+      function init(element, options) {
+
+        var temporaryStyles = [];
+        var node = getDomNode(element);
+
+        if (options.transitionStyle) {
+          temporaryStyles.push([PREFIX + 'transition', options.transitionStyle]);
+        }
+
+        if (options.keyframeStyle) {
+          temporaryStyles.push([PREFIX + 'animation', options.keyframeStyle]);
+        }
+
+        if (options.delay) {
+          temporaryStyles.push([PREFIX + 'transition-delay', options.delay + 's']);
+        }
+
+        if (options.duration) {
+          temporaryStyles.push([PREFIX + 'transition-duration', options.duration + 's']);
+        }
+
+        var hasCompleteStyles = options.keyframeStyle ||
+                                (options.to && (options.duration > 0 || options.transitionStyle));
+        var hasCompleteClasses = !!options.addClass || !!options.removeClass;
+        var hasCompleteAnimation = hasCompleteStyles || hasCompleteClasses;
+
+        blockTransition(element, true);
+        applyAnimationFromStyles(element, options);
+
+        var animationClosed = false;
+        var events, eventFn;
+
+        return {
+          close: $window.close,
+          start: function() {
+            var runner = new $$AnimateRunner();
+            waitUntilQuiet(function() {
+              blockTransition(element, false);
+              if (!hasCompleteAnimation) {
+                return close();
+              }
+
+              forEach(temporaryStyles, function(entry) {
+                var key = entry[0];
+                var value = entry[1];
+                node.style[camelCase(key)] = value;
+              });
+
+              applyClasses(element, options);
+
+              var timings = computeTimings(element);
+              if (timings.duration === 0) {
+                return close();
+              }
+
+              var moreStyles = [];
+
+              if (options.easing) {
+                if (timings.transitionDuration) {
+                  moreStyles.push([PREFIX + 'transition-timing-function', options.easing]);
+                }
+                if (timings.animationDuration) {
+                  moreStyles.push([PREFIX + 'animation-timing-function', options.easing]);
+                }
+              }
+
+              if (options.delay && timings.animationDelay) {
+                moreStyles.push([PREFIX + 'animation-delay', options.delay + 's']);
+              }
+
+              if (options.duration && timings.animationDuration) {
+                moreStyles.push([PREFIX + 'animation-duration', options.duration + 's']);
+              }
+
+              forEach(moreStyles, function(entry) {
+                var key = entry[0];
+                var value = entry[1];
+                node.style[camelCase(key)] = value;
+                temporaryStyles.push(entry);
+              });
+
+              var maxDelay = timings.delay;
+              var maxDelayTime = maxDelay * 1000;
+              var maxDuration = timings.duration;
+              var maxDurationTime = maxDuration * 1000;
+              var startTime = Date.now();
+
+              events = [];
+              if (timings.transitionDuration) {
+                events.push(TRANSITION_EVENTS);
+              }
+              if (timings.animationDuration) {
+                events.push(ANIMATION_EVENTS);
+              }
+              events = events.join(' ');
+              eventFn = function(event) {
+                event.stopPropagation();
+                var ev = event.originalEvent || event;
+                var timeStamp = ev.timeStamp || Date.now();
+                var elapsedTime = parseFloat(ev.elapsedTime.toFixed(3));
+                if (Math.max(timeStamp - startTime, 0) >= maxDelayTime && elapsedTime >= maxDuration) {
+                  close();
+                }
+              };
+              element.on(events, eventFn);
+
+              applyAnimationToStyles(element, options);
+
+              $timeout(close, maxDelayTime + maxDurationTime * 1.5, false);
+            });
+
+            return runner;
+
+            function close() {
+              if (animationClosed) return;
+              animationClosed = true;
+
+              if (events && eventFn) {
+                element.off(events, eventFn);
+              }
+              applyClasses(element, options);
+              applyAnimationStyles(element, options);
+              forEach(temporaryStyles, function(entry) {
+                node.style[camelCase(entry[0])] = '';
+              });
+              runner.complete(true);
+              return runner;
+            }
           }
         }
       }
-    }
 
-    return hasAttr;
+      function applyClasses(element, options) {
+        if (options.addClass) {
+          $$jqLite.addClass(element, options.addClass);
+          options.addClass = null;
+        }
+        if (options.removeClass) {
+          $$jqLite.removeClass(element, options.removeClass);
+          options.removeClass = null;
+        }
+      }
+
+      function computeTimings(element) {
+        var node = getDomNode(element);
+        var cs = $window.getComputedStyle(node)
+        var tdr = parseMaxTime(cs[prop('transitionDuration')]);
+        var adr = parseMaxTime(cs[prop('animationDuration')]);
+        var tdy = parseMaxTime(cs[prop('transitionDelay')]);
+        var ady = parseMaxTime(cs[prop('animationDelay')]);
+
+        adr *= (parseInt(cs[prop('animationIterationCount')], 10) || 1);
+        var duration = Math.max(adr, tdr);
+        var delay = Math.max(ady, tdy);
+
+        return {
+          duration: duration,
+          delay: delay,
+          animationDuration: adr,
+          transitionDuration: tdr,
+          animationDelay: ady,
+          transitionDelay: tdy
+        };
+
+        function prop(key) {
+          return WEBKIT ? 'Webkit' + key.charAt(0).toUpperCase() + key.substr(1)
+                        : key;
+        }
+      }
+
+      function parseMaxTime(str) {
+        var maxValue = 0;
+        var values = (str || "").split(/\s*,\s*/);
+        forEach(values, function(value) {
+          // it's always safe to consider only second values and omit `ms` values since
+          // getComputedStyle will always handle the conversion for us
+          if (value.charAt(value.length - 1) == 's') {
+            value = value.substring(0, value.length - 1);
+          }
+          value = parseFloat(value) || 0;
+          maxValue = maxValue ? Math.max(value, maxValue) : value;
+        });
+        return maxValue;
+      }
+
+      var cancelLastRAFRequest;
+      var rafWaitQueue = [];
+      function waitUntilQuiet(callback) {
+        if (cancelLastRAFRequest) {
+          cancelLastRAFRequest(); //cancels the request
+        }
+        rafWaitQueue.push(callback);
+        cancelLastRAFRequest = $$rAF(function() {
+          cancelLastRAFRequest = null;
+
+          // DO NOT REMOVE THIS LINE OR REFACTOR OUT THE `pageWidth` variable.
+          // PLEASE EXAMINE THE `$$forceReflow` service to understand why.
+          var pageWidth = $$forceReflow();
+
+          // we use a for loop to ensure that if the queue is changed
+          // during this looping then it will consider new requests
+          for (var i = 0; i < rafWaitQueue.length; i++) {
+            rafWaitQueue[i](pageWidth);
+          }
+          rafWaitQueue.length = 0;
+        });
+      }
+
+      function applyAnimationStyles(element, options) {
+        applyAnimationFromStyles(element, options);
+        applyAnimationToStyles(element, options);
+      }
+
+      function applyAnimationFromStyles(element, options) {
+        if (options.from) {
+          element.css(options.from);
+          options.from = null;
+        }
+      }
+
+      function applyAnimationToStyles(element, options) {
+        if (options.to) {
+          element.css(options.to);
+          options.to = null;
+        }
+      }
+
+      function getDomNode(element) {
+        for (var i = 0; i < element.length; i++) {
+          if (element[i].nodeType === 1) return element[i];
+        }
+      }
+
+      function blockTransition(element, bool) {
+        var node = getDomNode(element);
+        var key = camelCase(PREFIX + 'transition-delay');
+        node.style[key] = bool ? '-9999s' : '';
+      }
+
+      return init;
+    }]);
+
+  /**
+   * Older browsers [FF31] expect camelCase
+   * property keys.
+   * e.g.
+   *  animation-duration --> animationDuration
+   */
+  function camelCase(str) {
+    return str.replace(/-[a-z]/g, function(str) {
+      return str.charAt(1).toUpperCase();
+    });
   }
+
+})();
+
 }
-AriaService.$inject = ["$$rAF", "$log", "$window", "$interpolate"];
 
 angular
   .module('material.core')
@@ -2424,1207 +2940,6 @@ function InterimElementProvider() {
   }
 
 }
-
-var HANDLERS = {};
-
-/* The state of the current 'pointer'
- * The pointer represents the state of the current touch.
- * It contains normalized x and y coordinates from DOM events,
- * as well as other information abstracted from the DOM.
- */
- 
-var pointer, lastPointer, forceSkipClickHijack = false;
-
-/**
- * The position of the most recent click if that click was on a label element.
- * @type {{x: number, y: number}?}
- */
-var lastLabelClickPos = null;
-
-// Used to attach event listeners once when multiple ng-apps are running.
-var isInitialized = false;
-
-angular
-  .module('material.core.gestures', [ ])
-  .provider('$mdGesture', MdGestureProvider)
-  .factory('$$MdGestureHandler', MdGestureHandler)
-  .run( attachToDocument );
-
-/**
-   * @ngdoc service
-   * @name $mdGestureProvider
-   * @module material.core.gestures
-   *
-   * @description
-   * In some scenarios on Mobile devices (without jQuery), the click events should NOT be hijacked.
-   * `$mdGestureProvider` is used to configure the Gesture module to ignore or skip click hijacking on mobile
-   * devices.
-   *
-   * <hljs lang="js">
-   *   app.config(function($mdGestureProvider) {
-   *
-   *     // For mobile devices without jQuery loaded, do not
-   *     // intercept click events during the capture phase.
-   *     $mdGestureProvider.skipClickHijack();
-   *
-   *   });
-   * </hljs>
-   *
-   */
-function MdGestureProvider() { }
-
-MdGestureProvider.prototype = {
-
-  // Publish access to setter to configure a variable  BEFORE the
-  // $mdGesture service is instantiated...
-  skipClickHijack: function() {
-    return forceSkipClickHijack = true;
-  },
-
-  /**
-   * $get is used to build an instance of $mdGesture
-   * ngInject
-   */
-  $get : ["$$MdGestureHandler", "$$rAF", "$timeout", function($$MdGestureHandler, $$rAF, $timeout) {
-       return new MdGesture($$MdGestureHandler, $$rAF, $timeout);
-  }]
-};
-
-
-
-/**
- * MdGesture factory construction function
- * ngInject
- */
-function MdGesture($$MdGestureHandler, $$rAF, $timeout) {
-  var userAgent = navigator.userAgent || navigator.vendor || window.opera;
-  var isIos = userAgent.match(/ipad|iphone|ipod/i);
-  var isAndroid = userAgent.match(/android/i);
-  var hasJQuery =  (typeof window.jQuery !== 'undefined') && (angular.element === window.jQuery);
-
-  var self = {
-    handler: addHandler,
-    register: register,
-    // On mobile w/out jQuery, we normally intercept clicks. Should we skip that?
-    isHijackingClicks: (isIos || isAndroid) && !hasJQuery && !forceSkipClickHijack
-  };
-
-  if (self.isHijackingClicks) {
-    var maxClickDistance = 6;
-    self.handler('click', {
-      options: {
-        maxDistance: maxClickDistance
-      },
-      onEnd: checkDistanceAndEmit('click')
-    });
-
-    self.handler('focus', {
-      options: {
-        maxDistance: maxClickDistance
-      },
-      onEnd: function(ev, pointer) {
-        if (pointer.distance < this.state.options.maxDistance) {
-          if (canFocus(ev.target)) {
-            this.dispatchEvent(ev, 'focus', pointer);
-            ev.target.focus();
-          }
-        }
-
-        function canFocus(element) {
-          var focusableElements = ['INPUT', 'SELECT', 'BUTTON', 'TEXTAREA', 'VIDEO', 'AUDIO'];
-
-          return (element.getAttribute('tabindex') != '-1') &&
-              !element.hasAttribute('DISABLED') &&
-              (element.hasAttribute('tabindex') || element.hasAttribute('href') ||
-              (focusableElements.indexOf(element.nodeName) != -1));
-        }
-      }
-    });
-
-    self.handler('mouseup', {
-      options: {
-        maxDistance: maxClickDistance
-      },
-      onEnd: checkDistanceAndEmit('mouseup')
-    });
-
-    self.handler('mousedown', {
-      onStart: function(ev) {
-        this.dispatchEvent(ev, 'mousedown');
-      }
-    });
-  }
-
-  function checkDistanceAndEmit(eventName) {
-    return function(ev, pointer) {
-      if (pointer.distance < this.state.options.maxDistance) {
-        this.dispatchEvent(ev, eventName, pointer);
-      }
-    };
-  }
-
-  /*
-   * Register an element to listen for a handler.
-   * This allows an element to override the default options for a handler.
-   * Additionally, some handlers like drag and hold only dispatch events if
-   * the domEvent happens inside an element that's registered to listen for these events.
-   *
-   * @see GestureHandler for how overriding of default options works.
-   * @example $mdGesture.register(myElement, 'drag', { minDistance: 20, horziontal: false })
-   */
-  function register(element, handlerName, options) {
-    var handler = HANDLERS[handlerName.replace(/^\$md./, '')];
-    if (!handler) {
-      throw new Error('Failed to register element with handler ' + handlerName + '. ' +
-      'Available handlers: ' + Object.keys(HANDLERS).join(', '));
-    }
-    return handler.registerElement(element, options);
-  }
-
-  /*
-   * add a handler to $mdGesture. see below.
-   */
-  function addHandler(name, definition) {
-    var handler = new $$MdGestureHandler(name);
-    angular.extend(handler, definition);
-    HANDLERS[name] = handler;
-
-    return self;
-  }
-
-  /*
-   * Register handlers. These listen to touch/start/move events, interpret them,
-   * and dispatch gesture events depending on options & conditions. These are all
-   * instances of GestureHandler.
-   * @see GestureHandler 
-   */
-  return self
-    /*
-     * The press handler dispatches an event on touchdown/touchend.
-     * It's a simple abstraction of touch/mouse/pointer start and end.
-     */
-    .handler('press', {
-      onStart: function (ev, pointer) {
-        this.dispatchEvent(ev, '$md.pressdown');
-      },
-      onEnd: function (ev, pointer) {
-        this.dispatchEvent(ev, '$md.pressup');
-      }
-    })
-
-    /*
-     * The hold handler dispatches an event if the user keeps their finger within
-     * the same <maxDistance> area for <delay> ms.
-     * The hold handler will only run if a parent of the touch target is registered
-     * to listen for hold events through $mdGesture.register()
-     */
-    .handler('hold', {
-      options: {
-        maxDistance: 6,
-        delay: 500
-      },
-      onCancel: function () {
-        $timeout.cancel(this.state.timeout);
-      },
-      onStart: function (ev, pointer) {
-        // For hold, require a parent to be registered with $mdGesture.register()
-        // Because we prevent scroll events, this is necessary.
-        if (!this.state.registeredParent) return this.cancel();
-
-        this.state.pos = {x: pointer.x, y: pointer.y};
-        this.state.timeout = $timeout(angular.bind(this, function holdDelayFn() {
-          this.dispatchEvent(ev, '$md.hold');
-          this.cancel(); //we're done!
-        }), this.state.options.delay, false);
-      },
-      onMove: function (ev, pointer) {
-        // Don't scroll while waiting for hold.
-        // If we don't preventDefault touchmove events here, Android will assume we don't
-        // want to listen to anymore touch events. It will start scrolling and stop sending
-        // touchmove events.
-        ev.preventDefault();
-
-        // If the user moves greater than <maxDistance> pixels, stop the hold timer
-        // set in onStart
-        var dx = this.state.pos.x - pointer.x;
-        var dy = this.state.pos.y - pointer.y;
-        if (Math.sqrt(dx * dx + dy * dy) > this.options.maxDistance) {
-          this.cancel();
-        }
-      },
-      onEnd: function () {
-        this.onCancel();
-      }
-    })
-
-    /*
-     * The drag handler dispatches a drag event if the user holds and moves his finger greater than
-     * <minDistance> px in the x or y direction, depending on options.horizontal.
-     * The drag will be cancelled if the user moves his finger greater than <minDistance>*<cancelMultiplier> in
-     * the perpindicular direction. Eg if the drag is horizontal and the user moves his finger <minDistance>*<cancelMultiplier>
-     * pixels vertically, this handler won't consider the move part of a drag.
-     */
-    .handler('drag', {
-      options: {
-        minDistance: 6,
-        horizontal: true,
-        cancelMultiplier: 1.5
-      },
-      onStart: function (ev) {
-        // For drag, require a parent to be registered with $mdGesture.register()
-        if (!this.state.registeredParent) this.cancel();
-      },
-      onMove: function (ev, pointer) {
-        var shouldStartDrag, shouldCancel;
-        // Don't scroll while deciding if this touchmove qualifies as a drag event.
-        // If we don't preventDefault touchmove events here, Android will assume we don't
-        // want to listen to anymore touch events. It will start scrolling and stop sending
-        // touchmove events.
-        ev.preventDefault();
-
-        if (!this.state.dragPointer) {
-          if (this.state.options.horizontal) {
-            shouldStartDrag = Math.abs(pointer.distanceX) > this.state.options.minDistance;
-            shouldCancel = Math.abs(pointer.distanceY) > this.state.options.minDistance * this.state.options.cancelMultiplier;
-          } else {
-            shouldStartDrag = Math.abs(pointer.distanceY) > this.state.options.minDistance;
-            shouldCancel = Math.abs(pointer.distanceX) > this.state.options.minDistance * this.state.options.cancelMultiplier;
-          }
-
-          if (shouldStartDrag) {
-            // Create a new pointer representing this drag, starting at this point where the drag started.
-            this.state.dragPointer = makeStartPointer(ev);
-            updatePointerState(ev, this.state.dragPointer);
-            this.dispatchEvent(ev, '$md.dragstart', this.state.dragPointer);
-
-          } else if (shouldCancel) {
-            this.cancel();
-          }
-        } else {
-          this.dispatchDragMove(ev);
-        }
-      },
-      // Only dispatch dragmove events every frame; any more is unnecessray
-      dispatchDragMove: $$rAF.throttle(function (ev) {
-        // Make sure the drag didn't stop while waiting for the next frame
-        if (this.state.isRunning) {
-          updatePointerState(ev, this.state.dragPointer);
-          this.dispatchEvent(ev, '$md.drag', this.state.dragPointer);
-        }
-      }),
-      onEnd: function (ev, pointer) {
-        if (this.state.dragPointer) {
-          updatePointerState(ev, this.state.dragPointer);
-          this.dispatchEvent(ev, '$md.dragend', this.state.dragPointer);
-        }
-      }
-    })
-
-    /*
-     * The swipe handler will dispatch a swipe event if, on the end of a touch,
-     * the velocity and distance were high enough.
-     */
-    .handler('swipe', {
-      options: {
-        minVelocity: 0.65,
-        minDistance: 10
-      },
-      onEnd: function (ev, pointer) {
-        var eventType;
-
-        if (Math.abs(pointer.velocityX) > this.state.options.minVelocity &&
-          Math.abs(pointer.distanceX) > this.state.options.minDistance) {
-          eventType = pointer.directionX == 'left' ? '$md.swipeleft' : '$md.swiperight';
-          this.dispatchEvent(ev, eventType);
-        }
-        else if (Math.abs(pointer.velocityY) > this.state.options.minVelocity &&
-          Math.abs(pointer.distanceY) > this.state.options.minDistance) {
-          eventType = pointer.directionY == 'up' ? '$md.swipeup' : '$md.swipedown';
-          this.dispatchEvent(ev, eventType);
-        }
-      }
-    });
-
-}
-MdGesture.$inject = ["$$MdGestureHandler", "$$rAF", "$timeout"];
-
-/**
- * MdGestureHandler
- * A GestureHandler is an object which is able to dispatch custom dom events
- * based on native dom {touch,pointer,mouse}{start,move,end} events.
- *
- * A gesture will manage its lifecycle through the start,move,end, and cancel
- * functions, which are called by native dom events.
- *
- * A gesture has the concept of 'options' (eg a swipe's required velocity), which can be
- * overridden by elements registering through $mdGesture.register()
- */
-function GestureHandler (name) {
-  this.name = name;
-  this.state = {};
-}
-
-function MdGestureHandler() {
-  var hasJQuery =  (typeof window.jQuery !== 'undefined') && (angular.element === window.jQuery);
-
-  GestureHandler.prototype = {
-    options: {},
-    // jQuery listeners don't work with custom DOMEvents, so we have to dispatch events
-    // differently when jQuery is loaded
-    dispatchEvent: hasJQuery ?  jQueryDispatchEvent : nativeDispatchEvent,
-
-    // These are overridden by the registered handler
-    onStart: angular.noop,
-    onMove: angular.noop,
-    onEnd: angular.noop,
-    onCancel: angular.noop,
-
-    // onStart sets up a new state for the handler, which includes options from the
-    // nearest registered parent element of ev.target.
-    start: function (ev, pointer) {
-      if (this.state.isRunning) return;
-      var parentTarget = this.getNearestParent(ev.target);
-      // Get the options from the nearest registered parent
-      var parentTargetOptions = parentTarget && parentTarget.$mdGesture[this.name] || {};
-
-      this.state = {
-        isRunning: true,
-        // Override the default options with the nearest registered parent's options
-        options: angular.extend({}, this.options, parentTargetOptions),
-        // Pass in the registered parent node to the state so the onStart listener can use
-        registeredParent: parentTarget
-      };
-      this.onStart(ev, pointer);
-    },
-    move: function (ev, pointer) {
-      if (!this.state.isRunning) return;
-      this.onMove(ev, pointer);
-    },
-    end: function (ev, pointer) {
-      if (!this.state.isRunning) return;
-      this.onEnd(ev, pointer);
-      this.state.isRunning = false;
-    },
-    cancel: function (ev, pointer) {
-      this.onCancel(ev, pointer);
-      this.state = {};
-    },
-
-    // Find and return the nearest parent element that has been registered to
-    // listen for this handler via $mdGesture.register(element, 'handlerName').
-    getNearestParent: function (node) {
-      var current = node;
-      while (current) {
-        if ((current.$mdGesture || {})[this.name]) {
-          return current;
-        }
-        current = current.parentNode;
-      }
-      return null;
-    },
-
-    // Called from $mdGesture.register when an element reigsters itself with a handler.
-    // Store the options the user gave on the DOMElement itself. These options will
-    // be retrieved with getNearestParent when the handler starts.
-    registerElement: function (element, options) {
-      var self = this;
-      element[0].$mdGesture = element[0].$mdGesture || {};
-      element[0].$mdGesture[this.name] = options || {};
-      element.on('$destroy', onDestroy);
-
-      return onDestroy;
-
-      function onDestroy() {
-        delete element[0].$mdGesture[self.name];
-        element.off('$destroy', onDestroy);
-      }
-    }
-  };
-
-  return GestureHandler;
-
-  /*
-   * Dispatch an event with jQuery
-   * TODO: Make sure this sends bubbling events
-   *
-   * @param srcEvent the original DOM touch event that started this.
-   * @param eventType the name of the custom event to send (eg 'click' or '$md.drag')
-   * @param eventPointer the pointer object that matches this event.
-   */
-  function jQueryDispatchEvent(srcEvent, eventType, eventPointer) {
-    eventPointer = eventPointer || pointer;
-    var eventObj = new angular.element.Event(eventType);
-
-    eventObj.$material = true;
-    eventObj.pointer = eventPointer;
-    eventObj.srcEvent = srcEvent;
-
-    angular.extend(eventObj, {
-      clientX: eventPointer.x,
-      clientY: eventPointer.y,
-      screenX: eventPointer.x,
-      screenY: eventPointer.y,
-      pageX: eventPointer.x,
-      pageY: eventPointer.y,
-      ctrlKey: srcEvent.ctrlKey,
-      altKey: srcEvent.altKey,
-      shiftKey: srcEvent.shiftKey,
-      metaKey: srcEvent.metaKey
-    });
-    angular.element(eventPointer.target).trigger(eventObj);
-  }
-
-  /*
-   * NOTE: nativeDispatchEvent is very performance sensitive.
-   * @param srcEvent the original DOM touch event that started this.
-   * @param eventType the name of the custom event to send (eg 'click' or '$md.drag')
-   * @param eventPointer the pointer object that matches this event.
-   */
-  function nativeDispatchEvent(srcEvent, eventType, eventPointer) {
-    eventPointer = eventPointer || pointer;
-    var eventObj;
-
-    if (eventType === 'click' || eventType == 'mouseup' || eventType == 'mousedown' ) {
-      eventObj = document.createEvent('MouseEvents');
-      eventObj.initMouseEvent(
-        eventType, true, true, window, srcEvent.detail,
-        eventPointer.x, eventPointer.y, eventPointer.x, eventPointer.y,
-        srcEvent.ctrlKey, srcEvent.altKey, srcEvent.shiftKey, srcEvent.metaKey,
-        srcEvent.button, srcEvent.relatedTarget || null
-      );
-
-    } else {
-      eventObj = document.createEvent('CustomEvent');
-      eventObj.initCustomEvent(eventType, true, true, {});
-    }
-    eventObj.$material = true;
-    eventObj.pointer = eventPointer;
-    eventObj.srcEvent = srcEvent;
-    eventPointer.target.dispatchEvent(eventObj);
-  }
-
-}
-
-/**
- * Attach Gestures: hook document and check shouldHijack clicks
- * ngInject
- */
-function attachToDocument( $mdGesture, $$MdGestureHandler ) {
-
-  // Polyfill document.contains for IE11.
-  // TODO: move to util
-  document.contains || (document.contains = function (node) {
-    return document.body.contains(node);
-  });
-
-  if (!isInitialized && $mdGesture.isHijackingClicks ) {
-    /*
-     * If hijack clicks is true, we preventDefault any click that wasn't
-     * sent by ngMaterial. This is because on older Android & iOS, a false, or 'ghost',
-     * click event will be sent ~400ms after a touchend event happens.
-     * The only way to know if this click is real is to prevent any normal
-     * click events, and add a flag to events sent by material so we know not to prevent those.
-     * 
-     * Two exceptions to click events that should be prevented are:
-     *  - click events sent by the keyboard (eg form submit)
-     *  - events that originate from an Ionic app
-     */
-    document.addEventListener('click'    , clickHijacker     , true);
-    document.addEventListener('mouseup'  , mouseInputHijacker, true);
-    document.addEventListener('mousedown', mouseInputHijacker, true);
-    document.addEventListener('focus'    , mouseInputHijacker, true);
-
-    isInitialized = true;
-  }
-
-  function mouseInputHijacker(ev) {
-    var isKeyClick = !ev.clientX && !ev.clientY;
-    if (!isKeyClick && !ev.$material && !ev.isIonicTap
-      && !isInputEventFromLabelClick(ev)) {
-      ev.preventDefault();
-      ev.stopPropagation();
-    }
-  }
-
-  function clickHijacker(ev) {
-    var isKeyClick = ev.clientX === 0 && ev.clientY === 0;
-    if (!isKeyClick && !ev.$material && !ev.isIonicTap
-      && !isInputEventFromLabelClick(ev)) {
-      ev.preventDefault();
-      ev.stopPropagation();
-      lastLabelClickPos = null;
-    } else {
-      lastLabelClickPos = null;
-      if (ev.target.tagName.toLowerCase() == 'label') {
-        lastLabelClickPos = {x: ev.x, y: ev.y};
-      }
-    }
-  }
-
-
-  // Listen to all events to cover all platforms.
-  var START_EVENTS = 'mousedown touchstart pointerdown';
-  var MOVE_EVENTS = 'mousemove touchmove pointermove';
-  var END_EVENTS = 'mouseup mouseleave touchend touchcancel pointerup pointercancel';
-
-  angular.element(document)
-    .on(START_EVENTS, gestureStart)
-    .on(MOVE_EVENTS, gestureMove)
-    .on(END_EVENTS, gestureEnd)
-    // For testing
-    .on('$$mdGestureReset', function gestureClearCache () {
-      lastPointer = pointer = null;
-    });
-
-  /*
-   * When a DOM event happens, run all registered gesture handlers' lifecycle
-   * methods which match the DOM event.
-   * Eg when a 'touchstart' event happens, runHandlers('start') will call and
-   * run `handler.cancel()` and `handler.start()` on all registered handlers.
-   */
-  function runHandlers(handlerEvent, event) {
-    var handler;
-    for (var name in HANDLERS) {
-      handler = HANDLERS[name];
-      if( handler instanceof $$MdGestureHandler ) {
-
-        if (handlerEvent === 'start') {
-          // Run cancel to reset any handlers' state
-          handler.cancel();
-        }
-        handler[handlerEvent](event, pointer);
-
-      }
-    }
-  }
-
-  /*
-   * gestureStart vets if a start event is legitimate (and not part of a 'ghost click' from iOS/Android)
-   * If it is legitimate, we initiate the pointer state and mark the current pointer's type
-   * For example, for a touchstart event, mark the current pointer as a 'touch' pointer, so mouse events
-   * won't effect it.
-   */
-  function gestureStart(ev) {
-    // If we're already touched down, abort
-    if (pointer) return;
-
-    var now = +Date.now();
-
-    // iOS & old android bug: after a touch event, a click event is sent 350 ms later.
-    // If <400ms have passed, don't allow an event of a different type than the previous event
-    if (lastPointer && !typesMatch(ev, lastPointer) && (now - lastPointer.endTime < 1500)) {
-      return;
-    }
-
-    pointer = makeStartPointer(ev);
-
-    runHandlers('start', ev);
-  }
-  /*
-   * If a move event happens of the right type, update the pointer and run all the move handlers.
-   * "of the right type": if a mousemove happens but our pointer started with a touch event, do nothing.
-   */
-  function gestureMove(ev) {
-    if (!pointer || !typesMatch(ev, pointer)) return;
-
-    updatePointerState(ev, pointer);
-    runHandlers('move', ev);
-  }
-  /*
-   * If an end event happens of the right type, update the pointer, run endHandlers, and save the pointer as 'lastPointer'
-   */
-  function gestureEnd(ev) {
-    if (!pointer || !typesMatch(ev, pointer)) return;
-
-    updatePointerState(ev, pointer);
-    pointer.endTime = +Date.now();
-
-    runHandlers('end', ev);
-
-    lastPointer = pointer;
-    pointer = null;
-  }
-
-}
-attachToDocument.$inject = ["$mdGesture", "$$MdGestureHandler"];
-
-// ********************
-// Module Functions
-// ********************
-
-/*
- * Initiate the pointer. x, y, and the pointer's type.
- */
-function makeStartPointer(ev) {
-  var point = getEventPoint(ev);
-  var startPointer = {
-    startTime: +Date.now(),
-    target: ev.target,
-    // 'p' for pointer events, 'm' for mouse, 't' for touch
-    type: ev.type.charAt(0)
-  };
-  startPointer.startX = startPointer.x = point.pageX;
-  startPointer.startY = startPointer.y = point.pageY;
-  return startPointer;
-}
-
-/*
- * return whether the pointer's type matches the event's type.
- * Eg if a touch event happens but the pointer has a mouse type, return false.
- */
-function typesMatch(ev, pointer) {
-  return ev && pointer && ev.type.charAt(0) === pointer.type;
-}
-
-/**
- * Gets whether the given event is an input event that was caused by clicking on an
- * associated label element.
- *
- * This is necessary because the browser will, upon clicking on a label element, fire an
- * *extra* click event on its associated input (if any). mdGesture is able to flag the label
- * click as with `$material` correctly, but not the second input click.
- *
- * In order to determine whether an input event is from a label click, we compare the (x, y) for
- * the event to the (x, y) for the most recent label click (which is cleared whenever a non-label
- * click occurs). Unfortunately, there are no event properties that tie the input and the label
- * together (such as relatedTarget).
- *
- * @param {MouseEvent} event
- * @returns {boolean}
- */
-function isInputEventFromLabelClick(event) {
-  return lastLabelClickPos
-      && lastLabelClickPos.x == event.x
-      && lastLabelClickPos.y == event.y;
-}
-
-/*
- * Update the given pointer based upon the given DOMEvent.
- * Distance, velocity, direction, duration, etc
- */
-function updatePointerState(ev, pointer) {
-  var point = getEventPoint(ev);
-  var x = pointer.x = point.pageX;
-  var y = pointer.y = point.pageY;
-
-  pointer.distanceX = x - pointer.startX;
-  pointer.distanceY = y - pointer.startY;
-  pointer.distance = Math.sqrt(
-    pointer.distanceX * pointer.distanceX + pointer.distanceY * pointer.distanceY
-  );
-
-  pointer.directionX = pointer.distanceX > 0 ? 'right' : pointer.distanceX < 0 ? 'left' : '';
-  pointer.directionY = pointer.distanceY > 0 ? 'down' : pointer.distanceY < 0 ? 'up' : '';
-
-  pointer.duration = +Date.now() - pointer.startTime;
-  pointer.velocityX = pointer.distanceX / pointer.duration;
-  pointer.velocityY = pointer.distanceY / pointer.duration;
-}
-
-/*
- * Normalize the point where the DOM event happened whether it's touch or mouse.
- * @returns point event obj with pageX and pageY on it.
- */
-function getEventPoint(ev) {
-  ev = ev.originalEvent || ev; // support jQuery events
-  return (ev.touches && ev.touches[0]) ||
-    (ev.changedTouches && ev.changedTouches[0]) ||
-    ev;
-}
-
-(function() {
-  'use strict';
-
-  var $mdUtil, $interpolate, $log;
-
-  var SUFFIXES = /(-gt)?-(sm|md|lg|print)/g;
-  var WHITESPACE = /\s+/g;
-
-  var FLEX_OPTIONS = ['grow', 'initial', 'auto', 'none', 'noshrink', 'nogrow' ];
-  var LAYOUT_OPTIONS = ['row', 'column'];
-  var ALIGNMENT_MAIN_AXIS= [ "", "start", "center", "end", "stretch", "space-around", "space-between" ];
-  var ALIGNMENT_CROSS_AXIS= [ "", "start", "center", "end", "stretch" ];
-
-  var config = {
-    /**
-     * Enable directive attribute-to-class conversions
-     * Developers can use `<body md-layout-css />` to quickly
-     * disable the Layout directives and prohibit the injection of Layout classNames
-     */
-    enabled: true,
-
-    /**
-     * List of mediaQuery breakpoints and associated suffixes
-     *
-     *   [
-     *    { suffix: "sm", mediaQuery: "screen and (max-width: 599px)" },
-     *    { suffix: "md", mediaQuery: "screen and (min-width: 600px) and (max-width: 959px)" }
-     *   ]
-     */
-    breakpoints: []
-  };
-
-  registerLayoutAPI( angular.module('material.core.layout', ['ng']) );
-
-  /**
-   *   registerLayoutAPI()
-   *
-   *   The original ngMaterial Layout solution used attribute selectors and CSS.
-   *
-   *  ```html
-   *  <div layout="column"> My Content </div>
-   *  ```
-   *
-   *  ```css
-   *  [layout] {
-   *    box-sizing: border-box;
-   *    display:flex;
-   *  }
-   *  [layout=column] {
-   *    flex-direction : column
-   *  }
-   *  ```
-   *
-   *  Use of attribute selectors creates significant performance impacts in some
-   *  browsers... mainly IE.
-   *
-   *  This module registers directives that allow the same layout attributes to be
-   *  interpreted and converted to class selectors. The directive will add equivalent classes to each element that
-   *  contains a Layout directive.
-   *
-   * ```html
-   *   <div layout="column" class="layout layout-column"> My Content </div>
-   *```
-   *
-   *  ```css
-   *  .layout {
-   *    box-sizing: border-box;
-   *    display:flex;
-   *  }
-   *  .layout-column {
-   *    flex-direction : column
-   *  }
-   *  ```
-   */
-  function registerLayoutAPI(module){
-    var PREFIX_REGEXP = /^((?:x|data)[\:\-_])/i;
-    var SPECIAL_CHARS_REGEXP = /([\:\-\_]+(.))/g;
-
-    // NOTE: these are also defined in constants::MEDIA_PRIORITY and constants::MEDIA
-    var BREAKPOINTS     = [ "", "xs", "gt-xs", "sm", "gt-sm", "md", "gt-md", "lg", "gt-lg", "xl", "print" ];
-    var API_WITH_VALUES = [ "layout", "flex", "flex-order", "flex-offset", "layout-align" ];
-    var API_NO_VALUES   = [ "show", "hide", "layout-padding", "layout-margin" ];
-
-
-    // Build directive registration functions for the standard Layout API... for all breakpoints.
-    angular.forEach(BREAKPOINTS, function(mqb) {
-
-      // Attribute directives with expected, observable value(s)
-      angular.forEach( API_WITH_VALUES, function(name){
-        var fullName = mqb ? name + "-" + mqb : name;
-        module.directive( directiveNormalize(fullName), attributeWithObserve(fullName));
-      });
-
-      // Attribute directives with no expected value(s)
-      angular.forEach( API_NO_VALUES, function(name){
-        var fullName = mqb ? name + "-" + mqb : name;
-        module.directive( directiveNormalize(fullName), attributeWithoutValue(fullName));
-      });
-
-    });
-
-    // Register other, special directive functions for the Layout features:
-    module
-      .directive('mdLayoutCss'  , disableLayoutDirective )
-      .directive('ngCloak'      ,  buildCloakInterceptor('ng-cloak'))
-
-      .directive('layoutWrap'   , attributeWithoutValue('layout-wrap'))
-      .directive('layoutNowrap' , attributeWithoutValue('layout-nowrap'))
-      .directive('layoutNoWrap' , attributeWithoutValue('layout-no-wrap'))
-      .directive('layoutFill'   , attributeWithoutValue('layout-fill'))
-
-      // !! Deprecated attributes: use the `-lt` (aka less-than) notations
-
-      .directive('layoutLtMd'     , warnAttrNotSupported('layout-lt-md', true))
-      .directive('layoutLtLg'     , warnAttrNotSupported('layout-lt-lg', true))
-      .directive('flexLtMd'       , warnAttrNotSupported('flex-lt-md', true))
-      .directive('flexLtLg'       , warnAttrNotSupported('flex-lt-lg', true))
-
-      .directive('layoutAlignLtMd', warnAttrNotSupported('layout-align-lt-md'))
-      .directive('layoutAlignLtLg', warnAttrNotSupported('layout-align-lt-lg'))
-      .directive('flexOrderLtMd'  , warnAttrNotSupported('flex-order-lt-md'))
-      .directive('flexOrderLtLg'  , warnAttrNotSupported('flex-order-lt-lg'))
-      .directive('offsetLtMd'     , warnAttrNotSupported('flex-offset-lt-md'))
-      .directive('offsetLtLg'     , warnAttrNotSupported('flex-offset-lt-lg'))
-
-      .directive('hideLtMd'       , warnAttrNotSupported('hide-lt-md'))
-      .directive('hideLtLg'       , warnAttrNotSupported('hide-lt-lg'))
-      .directive('showLtMd'       , warnAttrNotSupported('show-lt-md'))
-      .directive('showLtLg'       , warnAttrNotSupported('show-lt-lg'));
-
-    /**
-     * Converts snake_case to camelCase.
-     * Also there is special case for Moz prefix starting with upper case letter.
-     * @param name Name to normalize
-     */
-    function directiveNormalize(name) {
-      return name
-        .replace(PREFIX_REGEXP, '')
-        .replace(SPECIAL_CHARS_REGEXP, function(_, separator, letter, offset) {
-          return offset ? letter.toUpperCase() : letter;
-        });
-    }
-
-  }
-
-  /**
-   * Special directive that will disable ALL Layout conversions of layout
-   * attribute(s) to classname(s).
-   *
-   * <link rel="stylesheet" href="angular-material.min.css">
-   * <link rel="stylesheet" href="angular-material.layout.css">
-   *
-   * <body md-layout-css>
-   *  ...
-   * </body>
-   *
-   * Note: Using md-layout-css directive requires the developer to load the Material
-   * Layout Attribute stylesheet (which only uses attribute selectors):
-   *
-   *       `angular-material.layout.css`
-   *
-   * Another option is to use the LayoutProvider to configure and disable the attribute
-   * conversions; this would obviate the use of the `md-layout-css` directive
-   *
-   */
-  function disableLayoutDirective() {
-    return {
-      restrict : 'A',
-      priority : '900',
-      compile  : function(element, attr) {
-        config.enabled = false;
-        return angular.noop;
-      }
-    };
-  }
-
-  /**
-   * Tail-hook ngCloak to delay the uncloaking while Layout transformers
-   * finish processing. Eliminates flicker with Material.Layoouts
-   */
-  function buildCloakInterceptor(className) {
-    return [ '$timeout', function($timeout){
-      return {
-        restrict : 'A',
-        priority : -10,   // run after normal ng-cloak
-        compile  : function( element ) {
-          if (!config.enabled) return angular.noop;
-
-          // Re-add the cloak
-          element.addClass(className);
-
-          return function( scope, element ) {
-            // Wait while layout injectors configure, then uncloak
-            // NOTE: $rAF does not delay enough... and this is a 1x-only event,
-            //       $timeout is acceptable.
-            $timeout( function(){
-              element.removeClass(className);
-            }, 10, false);
-          };
-        }
-      };
-    }];
-  }
-
-
-  // *********************************************************************************
-  //
-  // These functions create registration functions for ngMaterial Layout attribute directives
-  // This provides easy translation to switch ngMaterial attribute selectors to
-  // CLASS selectors and directives; which has huge performance implications
-  // for IE Browsers
-  //
-  // *********************************************************************************
-
-  /**
-   * Creates a directive registration function where a possible dynamic attribute
-   * value will be observed/watched.
-   * @param {string} className attribute name; eg `layout-gt-md` with value ="row"
-   */
-  function attributeWithObserve(className) {
-
-    return ['$mdUtil', '$interpolate', "$log", function(_$mdUtil_, _$interpolate_, _$log_) {
-      $mdUtil = _$mdUtil_;
-      $interpolate = _$interpolate_;
-      $log = _$log_;
-
-      return {
-        restrict: 'A',
-        compile: function(element, attr) {
-          var linkFn;
-          if (config.enabled) {
-            // immediately replace static (non-interpolated) invalid values...
-
-            validateAttributeUsage(className, attr, element, $log);
-
-            validateAttributeValue( className,
-              getNormalizedAttrValue(className, attr, ""),
-              buildUpdateFn(element, className, attr)
-            );
-
-            linkFn = translateWithValueToCssClass;
-          }
-
-          // Use for postLink to account for transforms after ng-transclude.
-          return linkFn || angular.noop;
-        }
-      };
-    }];
-
-    /**
-     * Add as transformed class selector(s), then
-     * remove the deprecated attribute selector
-     */
-    function translateWithValueToCssClass(scope, element, attrs) {
-      var updateFn = updateClassWithValue(element, className, attrs);
-      var unwatch = attrs.$observe(attrs.$normalize(className), updateFn);
-
-      updateFn(getNormalizedAttrValue(className, attrs, ""));
-      scope.$on("$destroy", function() { unwatch() });
-    }
-  }
-
-  /**
-   * Creates a registration function for ngMaterial Layout attribute directive.
-   * This is a `simple` transpose of attribute usage to class usage; where we ignore
-   * any attribute value
-   */
-  function attributeWithoutValue(className) {
-    return ['$mdUtil', '$interpolate', "$log", function(_$mdUtil_, _$interpolate_, _$log_) {
-      $mdUtil = _$mdUtil_;
-      $interpolate = _$interpolate_;
-      $log = _$log_;
-
-      return {
-        restrict: 'A',
-        compile: function(element, attr) {
-          var linkFn;
-          if (config.enabled) {
-            // immediately replace static (non-interpolated) invalid values...
-
-            validateAttributeValue( className,
-              getNormalizedAttrValue(className, attr, ""),
-              buildUpdateFn(element, className, attr)
-            );
-
-            translateToCssClass(null, element);
-
-            // Use for postLink to account for transforms after ng-transclude.
-            linkFn = translateToCssClass;
-          }
-
-          return linkFn || angular.noop;
-        }
-      };
-    }];
-
-    /**
-     * Add as transformed class selector, then
-     * remove the deprecated attribute selector
-     */
-    function translateToCssClass(scope, element) {
-      element.addClass(className);
-    }
-  }
-
-
-
-  /**
-   * After link-phase, do NOT remove deprecated layout attribute selector.
-   * Instead watch the attribute so interpolated data-bindings to layout
-   * selectors will continue to be supported.
-   *
-   * $observe() the className and update with new class (after removing the last one)
-   *
-   * e.g. `layout="{{layoutDemo.direction}}"` will update...
-   *
-   * NOTE: The value must match one of the specified styles in the CSS.
-   * For example `flex-gt-md="{{size}}`  where `scope.size == 47` will NOT work since
-   * only breakpoints for 0, 5, 10, 15... 100, 33, 34, 66, 67 are defined.
-   *
-   */
-  function updateClassWithValue(element, className) {
-    var lastClass;
-
-    return function updateClassFn(newValue) {
-      var value = validateAttributeValue(className, newValue || "");
-      if ( angular.isDefined(value) ) {
-        if (lastClass) element.removeClass(lastClass);
-        lastClass = !value ? className : className + "-" + value.replace(WHITESPACE, "-");
-        element.addClass(lastClass);
-      }
-    };
-  }
-
-  /**
-   * Provide console warning that this layout attribute has been deprecated
-   *
-   */
-  function warnAttrNotSupported(className) {
-    var parts = className.split("-");
-    return ["$log", function($log) {
-      $log.warn(className + "has been deprecated. Please use a `" + parts[0] + "-gt-<xxx>` variant.");
-      return angular.noop;
-    }];
-  }
-
-  /**
-   * Centralize warnings for known flexbox issues (especially IE-related issues)
-   */
-  function validateAttributeUsage(className, attr, element, $log){
-    var message, usage, url;
-    var nodeName = element[0].nodeName.toLowerCase();
-
-    switch(className.replace(SUFFIXES,"")) {
-      case "flex":
-        if ((nodeName == "md-button") || (nodeName == "fieldset")){
-          // @see https://github.com/philipwalton/flexbugs#9-some-html-elements-cant-be-flex-containers
-          // Use <div flex> wrapper inside (preferred) or outside
-
-          usage = "<" + nodeName + " " + className + "></" + nodeName + ">";
-          url = "https://github.com/philipwalton/flexbugs#9-some-html-elements-cant-be-flex-containers";
-          message = "Markup '{0}' may not work as expected in IE Browsers. Consult '{1}' for details.";
-
-          $log.warn( $mdUtil.supplant(message, [usage, url]) );
-        }
-    }
-
-  }
-
-
-  /**
-   * For the Layout attribute value, validate or replace with default
-   * fallback value
-   */
-  function validateAttributeValue(className, value, updateFn) {
-    var origValue = value;
-
-    if (!needsInterpolation(value)) {
-      switch (className.replace(SUFFIXES,"")) {
-        case 'layout'        :
-          if ( !findIn(value, LAYOUT_OPTIONS) ) {
-            value = LAYOUT_OPTIONS[0];    // 'row';
-          }
-          break;
-
-        case 'flex'          :
-          if (!findIn(value, FLEX_OPTIONS)) {
-            if (isNaN(value)) {
-              value = '';
-            }
-          }
-          break;
-
-        case 'flex-offset' :
-        case 'flex-order'    :
-          if (!value || isNaN(+value)) {
-            value = '0';
-          }
-          break;
-
-        case 'layout-align'  :
-          var axis = extractAlignAxis(value);
-          value = $mdUtil.supplant("{main}-{cross}",axis);
-          break;
-
-        case 'layout-padding' :
-        case 'layout-margin'  :
-        case 'layout-fill'    :
-        case 'layout-wrap'    :
-        case 'layout-nowrap'  :
-        case 'layout-nowrap' :
-          value = '';
-          break;
-      }
-
-      if (value != origValue) {
-        (updateFn || angular.noop)(value);
-      }
-    }
-
-    return value;
-  }
-
-  /**
-   * Replace current attribute value with fallback value
-   */
-  function buildUpdateFn(element, className, attrs) {
-    return function updateAttrValue(fallback) {
-      if (!needsInterpolation(fallback)) {
-        // Do not modify the element's attribute value; so
-        // uses '<ui-layout layout="/api/sidebar.html" />' will not
-        // be affected. Just update the attrs value.
-        attrs[attrs.$normalize(className)] = fallback;
-      }
-    };
-  }
-
-  /**
-   * See if the original value has interpolation symbols:
-   * e.g.  flex-gt-md="{{triggerPoint}}"
-   */
-  function needsInterpolation(value) {
-    return (value || "").indexOf($interpolate.startSymbol()) > -1;
-  }
-
-  function getNormalizedAttrValue(className, attrs, defaultVal) {
-    var normalizedAttr = attrs.$normalize(className);
-    return attrs[normalizedAttr] ? attrs[normalizedAttr].replace(WHITESPACE, "-") : defaultVal || null;
-  }
-
-  function findIn(item, list, replaceWith) {
-    item = replaceWith && item ? item.replace(WHITESPACE, replaceWith) : item;
-
-    var found = false;
-    if (item) {
-      list.forEach(function(it) {
-        it = replaceWith ? it.replace(WHITESPACE, replaceWith) : it;
-        found = found || (it === item);
-      });
-    }
-    return found;
-  }
-
-  function extractAlignAxis(attrValue) {
-    var axis = {
-      main : "start",
-      cross: "stretch"
-    }, values;
-
-    attrValue = (attrValue || "");
-
-    if ( attrValue.indexOf("-") == 0 || attrValue.indexOf(" ") == 0) {
-      // For missing main-axis values
-      attrValue = "none" + attrValue;
-    }
-
-    values = attrValue.toLowerCase().trim().replace(WHITESPACE, "-").split("-");
-    if ( values.length && (values[0] === "space") ) {
-      // for main-axis values of "space-around" or "space-between"
-      values = [ values[0]+"-"+values[1],values[2] ];
-    }
-
-    if ( values.length > 0 ) axis.main  = values[0] || axis.main;
-    if ( values.length > 1 ) axis.cross = values[1] || axis.cross;
-
-    if ( ALIGNMENT_MAIN_AXIS.indexOf(axis.main) < 0 )   axis.main = "start";
-    if ( ALIGNMENT_CROSS_AXIS.indexOf(axis.cross) < 0 ) axis.cross = "stretch";
-
-    return axis;
-  }
-
-
-})();
 
   /**
    * @ngdoc module
@@ -5410,636 +4725,1321 @@ function rgba(rgbArray, opacity) {
     'rgb(' + rgbArray.join(',') + ')';
 }
 
-// Polyfill angular < 1.4 (provide $animateCss)
-angular
-  .module('material.core')
-  .factory('$$mdAnimate', ["$q", "$timeout", "$mdConstant", "$animateCss", function($q, $timeout, $mdConstant, $animateCss){
 
-     // Since $$mdAnimate is injected into $mdUtil... use a wrapper function
-     // to subsequently inject $mdUtil as an argument to the AnimateDomUtils
+angular.module('material.core')
+  .service('$mdAria', AriaService);
 
-     return function($mdUtil) {
-       return AnimateDomUtils( $mdUtil, $q, $timeout, $mdConstant, $animateCss);
-     };
-   }]);
-
-/**
- * Factory function that requires special injections
+/*
+ * ngInject
  */
-function AnimateDomUtils($mdUtil, $q, $timeout, $mdConstant, $animateCss) {
-  var self;
-  return self = {
-    /**
-     *
-     */
-    translate3d : function( target, from, to, options ) {
-      return $animateCss(target,{
-        from:from,
-        to:to,
-        addClass:options.transitionInClass
-      })
-      .start()
-      .then(function(){
-          // Resolve with reverser function...
-          return reverseTranslate;
-      });
+function AriaService($$rAF, $log, $window, $interpolate) {
 
-      /**
-       * Specific reversal of the request translate animation above...
-       */
-      function reverseTranslate (newFrom) {
-        return $animateCss(target, {
-           to: newFrom || from,
-           addClass: options.transitionOutClass,
-           removeClass: options.transitionInClass
-        }).start();
-
-      }
-  },
-
-    /**
-     * Listen for transitionEnd event (with optional timeout)
-     * Announce completion or failure via promise handlers
-     */
-    waitTransitionEnd: function (element, opts) {
-        var TIMEOUT = 3000; // fallback is 3 secs
-
-        return $q(function(resolve, reject){
-          opts = opts || { };
-
-          var timer = $timeout(finished, opts.timeout || TIMEOUT);
-          element.on($mdConstant.CSS.TRANSITIONEND, finished);
-
-          /**
-           * Upon timeout or transitionEnd, reject or resolve (respectively) this promise.
-           * NOTE: Make sure this transitionEnd didn't bubble up from a child
-           */
-          function finished(ev) {
-            if ( ev && ev.target !== element[0]) return;
-
-            if ( ev  ) $timeout.cancel(timer);
-            element.off($mdConstant.CSS.TRANSITIONEND, finished);
-
-            // Never reject since ngAnimate may cause timeouts due missed transitionEnd events
-            resolve();
-
-          }
-
-        });
-      },
-
-    /**
-     * Calculate the zoom transform from dialog to origin.
-     *
-     * We use this to set the dialog position immediately;
-     * then the md-transition-in actually translates back to
-     * `translate3d(0,0,0) scale(1.0)`...
-     *
-     * NOTE: all values are rounded to the nearest integer
-     */
-    calculateZoomToOrigin: function (element, originator) {
-      var origin = originator.element;
-      var bounds = originator.bounds;
-
-      var zoomTemplate = "translate3d( {centerX}px, {centerY}px, 0 ) scale( {scaleX}, {scaleY} )";
-      var buildZoom = angular.bind(null, $mdUtil.supplant, zoomTemplate);
-      var zoomStyle = buildZoom({centerX: 0, centerY: 0, scaleX: 0.5, scaleY: 0.5});
-
-      if (origin || bounds) {
-        var originBnds = origin ? self.clientRect(origin) || currentBounds() : self.copyRect(bounds);
-        var dialogRect = self.copyRect(element[0].getBoundingClientRect());
-        var dialogCenterPt = self.centerPointFor(dialogRect);
-        var originCenterPt = self.centerPointFor(originBnds);
-
-        // Build the transform to zoom from the dialog center to the origin center
-
-        zoomStyle = buildZoom({
-          centerX: originCenterPt.x - dialogCenterPt.x,
-          centerY: originCenterPt.y - dialogCenterPt.y,
-          scaleX: Math.round(100 * Math.min(0.5, originBnds.width / dialogRect.width))/100,
-          scaleY: Math.round(100 * Math.min(0.5, originBnds.height / dialogRect.height))/100
-        });
-      }
-
-      return zoomStyle;
-
-      /**
-       * This is a fallback if the origin information is no longer valid, then the
-       * origin bounds simply becomes the current bounds for the dialogContainer's parent
-       */
-      function currentBounds() {
-        var cntr = element ? element.parent() : null;
-        var parent = cntr ? cntr.parent() : null;
-
-        return parent ? self.clientRect(parent) : null;
-      }
-    },
-
-    /**
-     * Enhance raw values to represent valid css stylings...
-     */
-    toCss : function( raw ) {
-      var css = { };
-      var lookups = 'left top right bottom width height x y min-width min-height max-width max-height';
-
-      angular.forEach(raw, function(value,key) {
-        if ( angular.isUndefined(value) ) return;
-
-        if ( lookups.indexOf(key) >= 0 ) {
-          css[key] = value + 'px';
-        } else {
-          switch (key) {
-            case 'transition':
-              convertToVendor(key, $mdConstant.CSS.TRANSITION, value);
-              break;
-            case 'transform':
-              convertToVendor(key, $mdConstant.CSS.TRANSFORM, value);
-              break;
-            case 'transformOrigin':
-              convertToVendor(key, $mdConstant.CSS.TRANSFORM_ORIGIN, value);
-              break;
-            default:
-              css[key] = value;
-          }
-        }
-      });
-
-      return css;
-
-      function convertToVendor(key, vendor, value) {
-        angular.forEach(vendor.split(' '), function (key) {
-          css[key] = value;
-        });
-      }
-    },
-
-    /**
-     * Convert the translate CSS value to key/value pair(s).
-     */
-    toTransformCss: function (transform, addTransition, transition) {
-      var css = {};
-      angular.forEach($mdConstant.CSS.TRANSFORM.split(' '), function (key) {
-        css[key] = transform;
-      });
-
-      if (addTransition) {
-        transition = transition || "all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1) !important";
-        css['transition'] = transition;
-      }
-
-      return css;
-    },
-
-    /**
-     *  Clone the Rect and calculate the height/width if needed
-     */
-    copyRect: function (source, destination) {
-      if (!source) return null;
-
-      destination = destination || {};
-
-      angular.forEach('left top right bottom width height'.split(' '), function (key) {
-        destination[key] = Math.round(source[key])
-      });
-
-      destination.width = destination.width || (destination.right - destination.left);
-      destination.height = destination.height || (destination.bottom - destination.top);
-
-      return destination;
-    },
-
-    /**
-     * Calculate ClientRect of element; return null if hidden or zero size
-     */
-    clientRect: function (element) {
-      var bounds = angular.element(element)[0].getBoundingClientRect();
-      var isPositiveSizeClientRect = function (rect) {
-        return rect && (rect.width > 0) && (rect.height > 0);
-      };
-
-      // If the event origin element has zero size, it has probably been hidden.
-      return isPositiveSizeClientRect(bounds) ? self.copyRect(bounds) : null;
-    },
-
-    /**
-     *  Calculate 'rounded' center point of Rect
-     */
-    centerPointFor: function (targetRect) {
-      return targetRect ? {
-        x: Math.round(targetRect.left + (targetRect.width / 2)),
-        y: Math.round(targetRect.top + (targetRect.height / 2))
-      } : { x : 0, y : 0 };
-    }
-
+  return {
+    expect: expect,
+    expectAsync: expectAsync,
+    expectWithText: expectWithText
   };
-};
-
-
-"use strict";
-
-if (angular.version.minor >= 4) {
-  angular.module('material.core.animate', []);
-} else {
-(function() {
-
-  var forEach = angular.forEach;
-
-  var WEBKIT = angular.isDefined(document.documentElement.style.WebkitAppearance);
-  var TRANSITION_PROP = WEBKIT ? 'WebkitTransition' : 'transition';
-  var ANIMATION_PROP = WEBKIT ? 'WebkitAnimation' : 'animation';
-  var PREFIX = WEBKIT ? '-webkit-' : '';
-
-  var TRANSITION_EVENTS = (WEBKIT ? 'webkitTransitionEnd ' : '') + 'transitionend';
-  var ANIMATION_EVENTS = (WEBKIT ? 'webkitAnimationEnd ' : '') + 'animationend';
-
-  var $$ForceReflowFactory = ['$document', function($document) {
-    return function() {
-      return $document[0].body.clientWidth + 1;
-    }
-  }];
-
-  var $$rAFMutexFactory = ['$$rAF', function($$rAF) {
-    return function() {
-      var passed = false;
-      $$rAF(function() {
-        passed = true;
-      });
-      return function(fn) {
-        passed ? fn() : $$rAF(fn);
-      };
-    };
-  }];
-
-  var $$AnimateRunnerFactory = ['$q', '$$rAFMutex', function($q, $$rAFMutex) {
-    var INITIAL_STATE = 0;
-    var DONE_PENDING_STATE = 1;
-    var DONE_COMPLETE_STATE = 2;
-
-    function AnimateRunner(host) {
-      this.setHost(host);
-
-      this._doneCallbacks = [];
-      this._runInAnimationFrame = $$rAFMutex();
-      this._state = 0;
-    }
-
-    AnimateRunner.prototype = {
-      setHost: function(host) {
-        this.host = host || {};
-      },
-
-      done: function(fn) {
-        if (this._state === DONE_COMPLETE_STATE) {
-          fn();
-        } else {
-          this._doneCallbacks.push(fn);
-        }
-      },
-
-      progress: angular.noop,
-
-      getPromise: function() {
-        if (!this.promise) {
-          var self = this;
-          this.promise = $q(function(resolve, reject) {
-            self.done(function(status) {
-              status === false ? reject() : resolve();
-            });
-          });
-        }
-        return this.promise;
-      },
-
-      then: function(resolveHandler, rejectHandler) {
-        return this.getPromise().then(resolveHandler, rejectHandler);
-      },
-
-      'catch': function(handler) {
-        return this.getPromise()['catch'](handler);
-      },
-
-      'finally': function(handler) {
-        return this.getPromise()['finally'](handler);
-      },
-
-      pause: function() {
-        if (this.host.pause) {
-          this.host.pause();
-        }
-      },
-
-      resume: function() {
-        if (this.host.resume) {
-          this.host.resume();
-        }
-      },
-
-      end: function() {
-        if (this.host.end) {
-          this.host.end();
-        }
-        this._resolve(true);
-      },
-
-      cancel: function() {
-        if (this.host.cancel) {
-          this.host.cancel();
-        }
-        this._resolve(false);
-      },
-
-      complete: function(response) {
-        var self = this;
-        if (self._state === INITIAL_STATE) {
-          self._state = DONE_PENDING_STATE;
-          self._runInAnimationFrame(function() {
-            self._resolve(response);
-          });
-        }
-      },
-
-      _resolve: function(response) {
-        if (this._state !== DONE_COMPLETE_STATE) {
-          forEach(this._doneCallbacks, function(fn) {
-            fn(response);
-          });
-          this._doneCallbacks.length = 0;
-          this._state = DONE_COMPLETE_STATE;
-        }
-      }
-    };
-
-    return AnimateRunner;
-  }];
-
-  angular
-    .module('material.core.animate', [])
-    .factory('$$forceReflow', $$ForceReflowFactory)
-    .factory('$$AnimateRunner', $$AnimateRunnerFactory)
-    .factory('$$rAFMutex', $$rAFMutexFactory)
-    .factory('$animateCss', ['$window', '$$rAF', '$$AnimateRunner', '$$forceReflow', '$$jqLite', '$timeout',
-                     function($window,   $$rAF,   $$AnimateRunner,   $$forceReflow,   $$jqLite,   $timeout) {
-
-      function init(element, options) {
-
-        var temporaryStyles = [];
-        var node = getDomNode(element);
-
-        if (options.transitionStyle) {
-          temporaryStyles.push([PREFIX + 'transition', options.transitionStyle]);
-        }
-
-        if (options.keyframeStyle) {
-          temporaryStyles.push([PREFIX + 'animation', options.keyframeStyle]);
-        }
-
-        if (options.delay) {
-          temporaryStyles.push([PREFIX + 'transition-delay', options.delay + 's']);
-        }
-
-        if (options.duration) {
-          temporaryStyles.push([PREFIX + 'transition-duration', options.duration + 's']);
-        }
-
-        var hasCompleteStyles = options.keyframeStyle ||
-                                (options.to && (options.duration > 0 || options.transitionStyle));
-        var hasCompleteClasses = !!options.addClass || !!options.removeClass;
-        var hasCompleteAnimation = hasCompleteStyles || hasCompleteClasses;
-
-        blockTransition(element, true);
-        applyAnimationFromStyles(element, options);
-
-        var animationClosed = false;
-        var events, eventFn;
-
-        return {
-          close: $window.close,
-          start: function() {
-            var runner = new $$AnimateRunner();
-            waitUntilQuiet(function() {
-              blockTransition(element, false);
-              if (!hasCompleteAnimation) {
-                return close();
-              }
-
-              forEach(temporaryStyles, function(entry) {
-                var key = entry[0];
-                var value = entry[1];
-                node.style[camelCase(key)] = value;
-              });
-
-              applyClasses(element, options);
-
-              var timings = computeTimings(element);
-              if (timings.duration === 0) {
-                return close();
-              }
-
-              var moreStyles = [];
-
-              if (options.easing) {
-                if (timings.transitionDuration) {
-                  moreStyles.push([PREFIX + 'transition-timing-function', options.easing]);
-                }
-                if (timings.animationDuration) {
-                  moreStyles.push([PREFIX + 'animation-timing-function', options.easing]);
-                }
-              }
-
-              if (options.delay && timings.animationDelay) {
-                moreStyles.push([PREFIX + 'animation-delay', options.delay + 's']);
-              }
-
-              if (options.duration && timings.animationDuration) {
-                moreStyles.push([PREFIX + 'animation-duration', options.duration + 's']);
-              }
-
-              forEach(moreStyles, function(entry) {
-                var key = entry[0];
-                var value = entry[1];
-                node.style[camelCase(key)] = value;
-                temporaryStyles.push(entry);
-              });
-
-              var maxDelay = timings.delay;
-              var maxDelayTime = maxDelay * 1000;
-              var maxDuration = timings.duration;
-              var maxDurationTime = maxDuration * 1000;
-              var startTime = Date.now();
-
-              events = [];
-              if (timings.transitionDuration) {
-                events.push(TRANSITION_EVENTS);
-              }
-              if (timings.animationDuration) {
-                events.push(ANIMATION_EVENTS);
-              }
-              events = events.join(' ');
-              eventFn = function(event) {
-                event.stopPropagation();
-                var ev = event.originalEvent || event;
-                var timeStamp = ev.timeStamp || Date.now();
-                var elapsedTime = parseFloat(ev.elapsedTime.toFixed(3));
-                if (Math.max(timeStamp - startTime, 0) >= maxDelayTime && elapsedTime >= maxDuration) {
-                  close();
-                }
-              };
-              element.on(events, eventFn);
-
-              applyAnimationToStyles(element, options);
-
-              $timeout(close, maxDelayTime + maxDurationTime * 1.5, false);
-            });
-
-            return runner;
-
-            function close() {
-              if (animationClosed) return;
-              animationClosed = true;
-
-              if (events && eventFn) {
-                element.off(events, eventFn);
-              }
-              applyClasses(element, options);
-              applyAnimationStyles(element, options);
-              forEach(temporaryStyles, function(entry) {
-                node.style[camelCase(entry[0])] = '';
-              });
-              runner.complete(true);
-              return runner;
-            }
-          }
-        }
-      }
-
-      function applyClasses(element, options) {
-        if (options.addClass) {
-          $$jqLite.addClass(element, options.addClass);
-          options.addClass = null;
-        }
-        if (options.removeClass) {
-          $$jqLite.removeClass(element, options.removeClass);
-          options.removeClass = null;
-        }
-      }
-
-      function computeTimings(element) {
-        var node = getDomNode(element);
-        var cs = $window.getComputedStyle(node)
-        var tdr = parseMaxTime(cs[prop('transitionDuration')]);
-        var adr = parseMaxTime(cs[prop('animationDuration')]);
-        var tdy = parseMaxTime(cs[prop('transitionDelay')]);
-        var ady = parseMaxTime(cs[prop('animationDelay')]);
-
-        adr *= (parseInt(cs[prop('animationIterationCount')], 10) || 1);
-        var duration = Math.max(adr, tdr);
-        var delay = Math.max(ady, tdy);
-
-        return {
-          duration: duration,
-          delay: delay,
-          animationDuration: adr,
-          transitionDuration: tdr,
-          animationDelay: ady,
-          transitionDelay: tdy
-        };
-
-        function prop(key) {
-          return WEBKIT ? 'Webkit' + key.charAt(0).toUpperCase() + key.substr(1)
-                        : key;
-        }
-      }
-
-      function parseMaxTime(str) {
-        var maxValue = 0;
-        var values = (str || "").split(/\s*,\s*/);
-        forEach(values, function(value) {
-          // it's always safe to consider only second values and omit `ms` values since
-          // getComputedStyle will always handle the conversion for us
-          if (value.charAt(value.length - 1) == 's') {
-            value = value.substring(0, value.length - 1);
-          }
-          value = parseFloat(value) || 0;
-          maxValue = maxValue ? Math.max(value, maxValue) : value;
-        });
-        return maxValue;
-      }
-
-      var cancelLastRAFRequest;
-      var rafWaitQueue = [];
-      function waitUntilQuiet(callback) {
-        if (cancelLastRAFRequest) {
-          cancelLastRAFRequest(); //cancels the request
-        }
-        rafWaitQueue.push(callback);
-        cancelLastRAFRequest = $$rAF(function() {
-          cancelLastRAFRequest = null;
-
-          // DO NOT REMOVE THIS LINE OR REFACTOR OUT THE `pageWidth` variable.
-          // PLEASE EXAMINE THE `$$forceReflow` service to understand why.
-          var pageWidth = $$forceReflow();
-
-          // we use a for loop to ensure that if the queue is changed
-          // during this looping then it will consider new requests
-          for (var i = 0; i < rafWaitQueue.length; i++) {
-            rafWaitQueue[i](pageWidth);
-          }
-          rafWaitQueue.length = 0;
-        });
-      }
-
-      function applyAnimationStyles(element, options) {
-        applyAnimationFromStyles(element, options);
-        applyAnimationToStyles(element, options);
-      }
-
-      function applyAnimationFromStyles(element, options) {
-        if (options.from) {
-          element.css(options.from);
-          options.from = null;
-        }
-      }
-
-      function applyAnimationToStyles(element, options) {
-        if (options.to) {
-          element.css(options.to);
-          options.to = null;
-        }
-      }
-
-      function getDomNode(element) {
-        for (var i = 0; i < element.length; i++) {
-          if (element[i].nodeType === 1) return element[i];
-        }
-      }
-
-      function blockTransition(element, bool) {
-        var node = getDomNode(element);
-        var key = camelCase(PREFIX + 'transition-delay');
-        node.style[key] = bool ? '-9999s' : '';
-      }
-
-      return init;
-    }]);
 
   /**
-   * Older browsers [FF31] expect camelCase
-   * property keys.
-   * e.g.
-   *  animation-duration --> animationDuration
+   * Check if expected attribute has been specified on the target element or child
+   * @param element
+   * @param attrName
+   * @param {optional} defaultValue What to set the attr to if no value is found
    */
-  function camelCase(str) {
-    return str.replace(/-[a-z]/g, function(str) {
-      return str.charAt(1).toUpperCase();
+  function expect(element, attrName, defaultValue) {
+
+    var node = angular.element(element)[0] || element;
+
+    // if node exists and neither it nor its children have the attribute
+    if (node &&
+       ((!node.hasAttribute(attrName) ||
+        node.getAttribute(attrName).length === 0) &&
+        !childHasAttribute(node, attrName))) {
+
+      defaultValue = angular.isString(defaultValue) ? defaultValue.trim() : '';
+      if (defaultValue.length) {
+        element.attr(attrName, defaultValue);
+      } else {
+        $log.warn('ARIA: Attribute "', attrName, '", required for accessibility, is missing on node:', node);
+      }
+
+    }
+  }
+
+  function expectAsync(element, attrName, defaultValueGetter) {
+    // Problem: when retrieving the element's contents synchronously to find the label,
+    // the text may not be defined yet in the case of a binding.
+    // There is a higher chance that a binding will be defined if we wait one frame.
+    $$rAF(function() {
+        expect(element, attrName, defaultValueGetter());
     });
   }
 
-})();
+  function expectWithText(element, attrName) {
+    var content = getText(element) || "";
+    var hasBinding = content.indexOf($interpolate.startSymbol()) > -1;
+
+    if ( hasBinding ) {
+      expectAsync(element, attrName, function() {
+        return getText(element);
+      });
+    } else {
+      expect(element, attrName, content);
+    }
+  }
+
+  function getText(element) {
+    element = element[0] || element;
+    var walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT, null, false);
+    var text = '';
+
+    var node;
+    while (node = walker.nextNode()) {
+      if (!isAriaHiddenNode(node)) {
+        text += node.textContent;
+      }
+    }
+
+    return text.trim() || '';
+
+    function isAriaHiddenNode(node) {
+      while (node.parentNode && (node = node.parentNode) !== element) {
+        if (node.getAttribute && node.getAttribute('aria-hidden') === 'true') {
+          return true;
+        }
+      }
+    }
+  }
+
+  function childHasAttribute(node, attrName) {
+    var hasChildren = node.hasChildNodes(),
+        hasAttr = false;
+
+    function isHidden(el) {
+      var style = el.currentStyle ? el.currentStyle : $window.getComputedStyle(el);
+      return (style.display === 'none');
+    }
+
+    if (hasChildren) {
+      var children = node.childNodes;
+      for (var i=0; i < children.length; i++) {
+        var child = children[i];
+        if (child.nodeType === 1 && child.hasAttribute(attrName)) {
+          if (!isHidden(child)) {
+            hasAttr = true;
+          }
+        }
+      }
+    }
+
+    return hasAttr;
+  }
+}
+AriaService.$inject = ["$$rAF", "$log", "$window", "$interpolate"];
+
+var HANDLERS = {};
+
+/* The state of the current 'pointer'
+ * The pointer represents the state of the current touch.
+ * It contains normalized x and y coordinates from DOM events,
+ * as well as other information abstracted from the DOM.
+ */
+ 
+var pointer, lastPointer, forceSkipClickHijack = false;
+
+/**
+ * The position of the most recent click if that click was on a label element.
+ * @type {{x: number, y: number}?}
+ */
+var lastLabelClickPos = null;
+
+// Used to attach event listeners once when multiple ng-apps are running.
+var isInitialized = false;
+
+angular
+  .module('material.core.gestures', [ ])
+  .provider('$mdGesture', MdGestureProvider)
+  .factory('$$MdGestureHandler', MdGestureHandler)
+  .run( attachToDocument );
+
+/**
+   * @ngdoc service
+   * @name $mdGestureProvider
+   * @module material.core.gestures
+   *
+   * @description
+   * In some scenarios on Mobile devices (without jQuery), the click events should NOT be hijacked.
+   * `$mdGestureProvider` is used to configure the Gesture module to ignore or skip click hijacking on mobile
+   * devices.
+   *
+   * <hljs lang="js">
+   *   app.config(function($mdGestureProvider) {
+   *
+   *     // For mobile devices without jQuery loaded, do not
+   *     // intercept click events during the capture phase.
+   *     $mdGestureProvider.skipClickHijack();
+   *
+   *   });
+   * </hljs>
+   *
+   */
+function MdGestureProvider() { }
+
+MdGestureProvider.prototype = {
+
+  // Publish access to setter to configure a variable  BEFORE the
+  // $mdGesture service is instantiated...
+  skipClickHijack: function() {
+    return forceSkipClickHijack = true;
+  },
+
+  /**
+   * $get is used to build an instance of $mdGesture
+   * ngInject
+   */
+  $get : ["$$MdGestureHandler", "$$rAF", "$timeout", function($$MdGestureHandler, $$rAF, $timeout) {
+       return new MdGesture($$MdGestureHandler, $$rAF, $timeout);
+  }]
+};
+
+
+
+/**
+ * MdGesture factory construction function
+ * ngInject
+ */
+function MdGesture($$MdGestureHandler, $$rAF, $timeout) {
+  var userAgent = navigator.userAgent || navigator.vendor || window.opera;
+  var isIos = userAgent.match(/ipad|iphone|ipod/i);
+  var isAndroid = userAgent.match(/android/i);
+  var hasJQuery =  (typeof window.jQuery !== 'undefined') && (angular.element === window.jQuery);
+
+  var self = {
+    handler: addHandler,
+    register: register,
+    // On mobile w/out jQuery, we normally intercept clicks. Should we skip that?
+    isHijackingClicks: (isIos || isAndroid) && !hasJQuery && !forceSkipClickHijack
+  };
+
+  if (self.isHijackingClicks) {
+    var maxClickDistance = 6;
+    self.handler('click', {
+      options: {
+        maxDistance: maxClickDistance
+      },
+      onEnd: checkDistanceAndEmit('click')
+    });
+
+    self.handler('focus', {
+      options: {
+        maxDistance: maxClickDistance
+      },
+      onEnd: function(ev, pointer) {
+        if (pointer.distance < this.state.options.maxDistance) {
+          if (canFocus(ev.target)) {
+            this.dispatchEvent(ev, 'focus', pointer);
+            ev.target.focus();
+          }
+        }
+
+        function canFocus(element) {
+          var focusableElements = ['INPUT', 'SELECT', 'BUTTON', 'TEXTAREA', 'VIDEO', 'AUDIO'];
+
+          return (element.getAttribute('tabindex') != '-1') &&
+              !element.hasAttribute('DISABLED') &&
+              (element.hasAttribute('tabindex') || element.hasAttribute('href') ||
+              (focusableElements.indexOf(element.nodeName) != -1));
+        }
+      }
+    });
+
+    self.handler('mouseup', {
+      options: {
+        maxDistance: maxClickDistance
+      },
+      onEnd: checkDistanceAndEmit('mouseup')
+    });
+
+    self.handler('mousedown', {
+      onStart: function(ev) {
+        this.dispatchEvent(ev, 'mousedown');
+      }
+    });
+  }
+
+  function checkDistanceAndEmit(eventName) {
+    return function(ev, pointer) {
+      if (pointer.distance < this.state.options.maxDistance) {
+        this.dispatchEvent(ev, eventName, pointer);
+      }
+    };
+  }
+
+  /*
+   * Register an element to listen for a handler.
+   * This allows an element to override the default options for a handler.
+   * Additionally, some handlers like drag and hold only dispatch events if
+   * the domEvent happens inside an element that's registered to listen for these events.
+   *
+   * @see GestureHandler for how overriding of default options works.
+   * @example $mdGesture.register(myElement, 'drag', { minDistance: 20, horziontal: false })
+   */
+  function register(element, handlerName, options) {
+    var handler = HANDLERS[handlerName.replace(/^\$md./, '')];
+    if (!handler) {
+      throw new Error('Failed to register element with handler ' + handlerName + '. ' +
+      'Available handlers: ' + Object.keys(HANDLERS).join(', '));
+    }
+    return handler.registerElement(element, options);
+  }
+
+  /*
+   * add a handler to $mdGesture. see below.
+   */
+  function addHandler(name, definition) {
+    var handler = new $$MdGestureHandler(name);
+    angular.extend(handler, definition);
+    HANDLERS[name] = handler;
+
+    return self;
+  }
+
+  /*
+   * Register handlers. These listen to touch/start/move events, interpret them,
+   * and dispatch gesture events depending on options & conditions. These are all
+   * instances of GestureHandler.
+   * @see GestureHandler 
+   */
+  return self
+    /*
+     * The press handler dispatches an event on touchdown/touchend.
+     * It's a simple abstraction of touch/mouse/pointer start and end.
+     */
+    .handler('press', {
+      onStart: function (ev, pointer) {
+        this.dispatchEvent(ev, '$md.pressdown');
+      },
+      onEnd: function (ev, pointer) {
+        this.dispatchEvent(ev, '$md.pressup');
+      }
+    })
+
+    /*
+     * The hold handler dispatches an event if the user keeps their finger within
+     * the same <maxDistance> area for <delay> ms.
+     * The hold handler will only run if a parent of the touch target is registered
+     * to listen for hold events through $mdGesture.register()
+     */
+    .handler('hold', {
+      options: {
+        maxDistance: 6,
+        delay: 500
+      },
+      onCancel: function () {
+        $timeout.cancel(this.state.timeout);
+      },
+      onStart: function (ev, pointer) {
+        // For hold, require a parent to be registered with $mdGesture.register()
+        // Because we prevent scroll events, this is necessary.
+        if (!this.state.registeredParent) return this.cancel();
+
+        this.state.pos = {x: pointer.x, y: pointer.y};
+        this.state.timeout = $timeout(angular.bind(this, function holdDelayFn() {
+          this.dispatchEvent(ev, '$md.hold');
+          this.cancel(); //we're done!
+        }), this.state.options.delay, false);
+      },
+      onMove: function (ev, pointer) {
+        // Don't scroll while waiting for hold.
+        // If we don't preventDefault touchmove events here, Android will assume we don't
+        // want to listen to anymore touch events. It will start scrolling and stop sending
+        // touchmove events.
+        ev.preventDefault();
+
+        // If the user moves greater than <maxDistance> pixels, stop the hold timer
+        // set in onStart
+        var dx = this.state.pos.x - pointer.x;
+        var dy = this.state.pos.y - pointer.y;
+        if (Math.sqrt(dx * dx + dy * dy) > this.options.maxDistance) {
+          this.cancel();
+        }
+      },
+      onEnd: function () {
+        this.onCancel();
+      }
+    })
+
+    /*
+     * The drag handler dispatches a drag event if the user holds and moves his finger greater than
+     * <minDistance> px in the x or y direction, depending on options.horizontal.
+     * The drag will be cancelled if the user moves his finger greater than <minDistance>*<cancelMultiplier> in
+     * the perpindicular direction. Eg if the drag is horizontal and the user moves his finger <minDistance>*<cancelMultiplier>
+     * pixels vertically, this handler won't consider the move part of a drag.
+     */
+    .handler('drag', {
+      options: {
+        minDistance: 6,
+        horizontal: true,
+        cancelMultiplier: 1.5
+      },
+      onStart: function (ev) {
+        // For drag, require a parent to be registered with $mdGesture.register()
+        if (!this.state.registeredParent) this.cancel();
+      },
+      onMove: function (ev, pointer) {
+        var shouldStartDrag, shouldCancel;
+        // Don't scroll while deciding if this touchmove qualifies as a drag event.
+        // If we don't preventDefault touchmove events here, Android will assume we don't
+        // want to listen to anymore touch events. It will start scrolling and stop sending
+        // touchmove events.
+        ev.preventDefault();
+
+        if (!this.state.dragPointer) {
+          if (this.state.options.horizontal) {
+            shouldStartDrag = Math.abs(pointer.distanceX) > this.state.options.minDistance;
+            shouldCancel = Math.abs(pointer.distanceY) > this.state.options.minDistance * this.state.options.cancelMultiplier;
+          } else {
+            shouldStartDrag = Math.abs(pointer.distanceY) > this.state.options.minDistance;
+            shouldCancel = Math.abs(pointer.distanceX) > this.state.options.minDistance * this.state.options.cancelMultiplier;
+          }
+
+          if (shouldStartDrag) {
+            // Create a new pointer representing this drag, starting at this point where the drag started.
+            this.state.dragPointer = makeStartPointer(ev);
+            updatePointerState(ev, this.state.dragPointer);
+            this.dispatchEvent(ev, '$md.dragstart', this.state.dragPointer);
+
+          } else if (shouldCancel) {
+            this.cancel();
+          }
+        } else {
+          this.dispatchDragMove(ev);
+        }
+      },
+      // Only dispatch dragmove events every frame; any more is unnecessray
+      dispatchDragMove: $$rAF.throttle(function (ev) {
+        // Make sure the drag didn't stop while waiting for the next frame
+        if (this.state.isRunning) {
+          updatePointerState(ev, this.state.dragPointer);
+          this.dispatchEvent(ev, '$md.drag', this.state.dragPointer);
+        }
+      }),
+      onEnd: function (ev, pointer) {
+        if (this.state.dragPointer) {
+          updatePointerState(ev, this.state.dragPointer);
+          this.dispatchEvent(ev, '$md.dragend', this.state.dragPointer);
+        }
+      }
+    })
+
+    /*
+     * The swipe handler will dispatch a swipe event if, on the end of a touch,
+     * the velocity and distance were high enough.
+     */
+    .handler('swipe', {
+      options: {
+        minVelocity: 0.65,
+        minDistance: 10
+      },
+      onEnd: function (ev, pointer) {
+        var eventType;
+
+        if (Math.abs(pointer.velocityX) > this.state.options.minVelocity &&
+          Math.abs(pointer.distanceX) > this.state.options.minDistance) {
+          eventType = pointer.directionX == 'left' ? '$md.swipeleft' : '$md.swiperight';
+          this.dispatchEvent(ev, eventType);
+        }
+        else if (Math.abs(pointer.velocityY) > this.state.options.minVelocity &&
+          Math.abs(pointer.distanceY) > this.state.options.minDistance) {
+          eventType = pointer.directionY == 'up' ? '$md.swipeup' : '$md.swipedown';
+          this.dispatchEvent(ev, eventType);
+        }
+      }
+    });
+
+}
+MdGesture.$inject = ["$$MdGestureHandler", "$$rAF", "$timeout"];
+
+/**
+ * MdGestureHandler
+ * A GestureHandler is an object which is able to dispatch custom dom events
+ * based on native dom {touch,pointer,mouse}{start,move,end} events.
+ *
+ * A gesture will manage its lifecycle through the start,move,end, and cancel
+ * functions, which are called by native dom events.
+ *
+ * A gesture has the concept of 'options' (eg a swipe's required velocity), which can be
+ * overridden by elements registering through $mdGesture.register()
+ */
+function GestureHandler (name) {
+  this.name = name;
+  this.state = {};
+}
+
+function MdGestureHandler() {
+  var hasJQuery =  (typeof window.jQuery !== 'undefined') && (angular.element === window.jQuery);
+
+  GestureHandler.prototype = {
+    options: {},
+    // jQuery listeners don't work with custom DOMEvents, so we have to dispatch events
+    // differently when jQuery is loaded
+    dispatchEvent: hasJQuery ?  jQueryDispatchEvent : nativeDispatchEvent,
+
+    // These are overridden by the registered handler
+    onStart: angular.noop,
+    onMove: angular.noop,
+    onEnd: angular.noop,
+    onCancel: angular.noop,
+
+    // onStart sets up a new state for the handler, which includes options from the
+    // nearest registered parent element of ev.target.
+    start: function (ev, pointer) {
+      if (this.state.isRunning) return;
+      var parentTarget = this.getNearestParent(ev.target);
+      // Get the options from the nearest registered parent
+      var parentTargetOptions = parentTarget && parentTarget.$mdGesture[this.name] || {};
+
+      this.state = {
+        isRunning: true,
+        // Override the default options with the nearest registered parent's options
+        options: angular.extend({}, this.options, parentTargetOptions),
+        // Pass in the registered parent node to the state so the onStart listener can use
+        registeredParent: parentTarget
+      };
+      this.onStart(ev, pointer);
+    },
+    move: function (ev, pointer) {
+      if (!this.state.isRunning) return;
+      this.onMove(ev, pointer);
+    },
+    end: function (ev, pointer) {
+      if (!this.state.isRunning) return;
+      this.onEnd(ev, pointer);
+      this.state.isRunning = false;
+    },
+    cancel: function (ev, pointer) {
+      this.onCancel(ev, pointer);
+      this.state = {};
+    },
+
+    // Find and return the nearest parent element that has been registered to
+    // listen for this handler via $mdGesture.register(element, 'handlerName').
+    getNearestParent: function (node) {
+      var current = node;
+      while (current) {
+        if ((current.$mdGesture || {})[this.name]) {
+          return current;
+        }
+        current = current.parentNode;
+      }
+      return null;
+    },
+
+    // Called from $mdGesture.register when an element reigsters itself with a handler.
+    // Store the options the user gave on the DOMElement itself. These options will
+    // be retrieved with getNearestParent when the handler starts.
+    registerElement: function (element, options) {
+      var self = this;
+      element[0].$mdGesture = element[0].$mdGesture || {};
+      element[0].$mdGesture[this.name] = options || {};
+      element.on('$destroy', onDestroy);
+
+      return onDestroy;
+
+      function onDestroy() {
+        delete element[0].$mdGesture[self.name];
+        element.off('$destroy', onDestroy);
+      }
+    }
+  };
+
+  return GestureHandler;
+
+  /*
+   * Dispatch an event with jQuery
+   * TODO: Make sure this sends bubbling events
+   *
+   * @param srcEvent the original DOM touch event that started this.
+   * @param eventType the name of the custom event to send (eg 'click' or '$md.drag')
+   * @param eventPointer the pointer object that matches this event.
+   */
+  function jQueryDispatchEvent(srcEvent, eventType, eventPointer) {
+    eventPointer = eventPointer || pointer;
+    var eventObj = new angular.element.Event(eventType);
+
+    eventObj.$material = true;
+    eventObj.pointer = eventPointer;
+    eventObj.srcEvent = srcEvent;
+
+    angular.extend(eventObj, {
+      clientX: eventPointer.x,
+      clientY: eventPointer.y,
+      screenX: eventPointer.x,
+      screenY: eventPointer.y,
+      pageX: eventPointer.x,
+      pageY: eventPointer.y,
+      ctrlKey: srcEvent.ctrlKey,
+      altKey: srcEvent.altKey,
+      shiftKey: srcEvent.shiftKey,
+      metaKey: srcEvent.metaKey
+    });
+    angular.element(eventPointer.target).trigger(eventObj);
+  }
+
+  /*
+   * NOTE: nativeDispatchEvent is very performance sensitive.
+   * @param srcEvent the original DOM touch event that started this.
+   * @param eventType the name of the custom event to send (eg 'click' or '$md.drag')
+   * @param eventPointer the pointer object that matches this event.
+   */
+  function nativeDispatchEvent(srcEvent, eventType, eventPointer) {
+    eventPointer = eventPointer || pointer;
+    var eventObj;
+
+    if (eventType === 'click' || eventType == 'mouseup' || eventType == 'mousedown' ) {
+      eventObj = document.createEvent('MouseEvents');
+      eventObj.initMouseEvent(
+        eventType, true, true, window, srcEvent.detail,
+        eventPointer.x, eventPointer.y, eventPointer.x, eventPointer.y,
+        srcEvent.ctrlKey, srcEvent.altKey, srcEvent.shiftKey, srcEvent.metaKey,
+        srcEvent.button, srcEvent.relatedTarget || null
+      );
+
+    } else {
+      eventObj = document.createEvent('CustomEvent');
+      eventObj.initCustomEvent(eventType, true, true, {});
+    }
+    eventObj.$material = true;
+    eventObj.pointer = eventPointer;
+    eventObj.srcEvent = srcEvent;
+    eventPointer.target.dispatchEvent(eventObj);
+  }
 
 }
 
+/**
+ * Attach Gestures: hook document and check shouldHijack clicks
+ * ngInject
+ */
+function attachToDocument( $mdGesture, $$MdGestureHandler ) {
+
+  // Polyfill document.contains for IE11.
+  // TODO: move to util
+  document.contains || (document.contains = function (node) {
+    return document.body.contains(node);
+  });
+
+  if (!isInitialized && $mdGesture.isHijackingClicks ) {
+    /*
+     * If hijack clicks is true, we preventDefault any click that wasn't
+     * sent by ngMaterial. This is because on older Android & iOS, a false, or 'ghost',
+     * click event will be sent ~400ms after a touchend event happens.
+     * The only way to know if this click is real is to prevent any normal
+     * click events, and add a flag to events sent by material so we know not to prevent those.
+     * 
+     * Two exceptions to click events that should be prevented are:
+     *  - click events sent by the keyboard (eg form submit)
+     *  - events that originate from an Ionic app
+     */
+    document.addEventListener('click'    , clickHijacker     , true);
+    document.addEventListener('mouseup'  , mouseInputHijacker, true);
+    document.addEventListener('mousedown', mouseInputHijacker, true);
+    document.addEventListener('focus'    , mouseInputHijacker, true);
+
+    isInitialized = true;
+  }
+
+  function mouseInputHijacker(ev) {
+    var isKeyClick = !ev.clientX && !ev.clientY;
+    if (!isKeyClick && !ev.$material && !ev.isIonicTap
+      && !isInputEventFromLabelClick(ev)) {
+      ev.preventDefault();
+      ev.stopPropagation();
+    }
+  }
+
+  function clickHijacker(ev) {
+    var isKeyClick = ev.clientX === 0 && ev.clientY === 0;
+    if (!isKeyClick && !ev.$material && !ev.isIonicTap
+      && !isInputEventFromLabelClick(ev)) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      lastLabelClickPos = null;
+    } else {
+      lastLabelClickPos = null;
+      if (ev.target.tagName.toLowerCase() == 'label') {
+        lastLabelClickPos = {x: ev.x, y: ev.y};
+      }
+    }
+  }
+
+
+  // Listen to all events to cover all platforms.
+  var START_EVENTS = 'mousedown touchstart pointerdown';
+  var MOVE_EVENTS = 'mousemove touchmove pointermove';
+  var END_EVENTS = 'mouseup mouseleave touchend touchcancel pointerup pointercancel';
+
+  angular.element(document)
+    .on(START_EVENTS, gestureStart)
+    .on(MOVE_EVENTS, gestureMove)
+    .on(END_EVENTS, gestureEnd)
+    // For testing
+    .on('$$mdGestureReset', function gestureClearCache () {
+      lastPointer = pointer = null;
+    });
+
+  /*
+   * When a DOM event happens, run all registered gesture handlers' lifecycle
+   * methods which match the DOM event.
+   * Eg when a 'touchstart' event happens, runHandlers('start') will call and
+   * run `handler.cancel()` and `handler.start()` on all registered handlers.
+   */
+  function runHandlers(handlerEvent, event) {
+    var handler;
+    for (var name in HANDLERS) {
+      handler = HANDLERS[name];
+      if( handler instanceof $$MdGestureHandler ) {
+
+        if (handlerEvent === 'start') {
+          // Run cancel to reset any handlers' state
+          handler.cancel();
+        }
+        handler[handlerEvent](event, pointer);
+
+      }
+    }
+  }
+
+  /*
+   * gestureStart vets if a start event is legitimate (and not part of a 'ghost click' from iOS/Android)
+   * If it is legitimate, we initiate the pointer state and mark the current pointer's type
+   * For example, for a touchstart event, mark the current pointer as a 'touch' pointer, so mouse events
+   * won't effect it.
+   */
+  function gestureStart(ev) {
+    // If we're already touched down, abort
+    if (pointer) return;
+
+    var now = +Date.now();
+
+    // iOS & old android bug: after a touch event, a click event is sent 350 ms later.
+    // If <400ms have passed, don't allow an event of a different type than the previous event
+    if (lastPointer && !typesMatch(ev, lastPointer) && (now - lastPointer.endTime < 1500)) {
+      return;
+    }
+
+    pointer = makeStartPointer(ev);
+
+    runHandlers('start', ev);
+  }
+  /*
+   * If a move event happens of the right type, update the pointer and run all the move handlers.
+   * "of the right type": if a mousemove happens but our pointer started with a touch event, do nothing.
+   */
+  function gestureMove(ev) {
+    if (!pointer || !typesMatch(ev, pointer)) return;
+
+    updatePointerState(ev, pointer);
+    runHandlers('move', ev);
+  }
+  /*
+   * If an end event happens of the right type, update the pointer, run endHandlers, and save the pointer as 'lastPointer'
+   */
+  function gestureEnd(ev) {
+    if (!pointer || !typesMatch(ev, pointer)) return;
+
+    updatePointerState(ev, pointer);
+    pointer.endTime = +Date.now();
+
+    runHandlers('end', ev);
+
+    lastPointer = pointer;
+    pointer = null;
+  }
+
+}
+attachToDocument.$inject = ["$mdGesture", "$$MdGestureHandler"];
+
+// ********************
+// Module Functions
+// ********************
+
+/*
+ * Initiate the pointer. x, y, and the pointer's type.
+ */
+function makeStartPointer(ev) {
+  var point = getEventPoint(ev);
+  var startPointer = {
+    startTime: +Date.now(),
+    target: ev.target,
+    // 'p' for pointer events, 'm' for mouse, 't' for touch
+    type: ev.type.charAt(0)
+  };
+  startPointer.startX = startPointer.x = point.pageX;
+  startPointer.startY = startPointer.y = point.pageY;
+  return startPointer;
+}
+
+/*
+ * return whether the pointer's type matches the event's type.
+ * Eg if a touch event happens but the pointer has a mouse type, return false.
+ */
+function typesMatch(ev, pointer) {
+  return ev && pointer && ev.type.charAt(0) === pointer.type;
+}
+
+/**
+ * Gets whether the given event is an input event that was caused by clicking on an
+ * associated label element.
+ *
+ * This is necessary because the browser will, upon clicking on a label element, fire an
+ * *extra* click event on its associated input (if any). mdGesture is able to flag the label
+ * click as with `$material` correctly, but not the second input click.
+ *
+ * In order to determine whether an input event is from a label click, we compare the (x, y) for
+ * the event to the (x, y) for the most recent label click (which is cleared whenever a non-label
+ * click occurs). Unfortunately, there are no event properties that tie the input and the label
+ * together (such as relatedTarget).
+ *
+ * @param {MouseEvent} event
+ * @returns {boolean}
+ */
+function isInputEventFromLabelClick(event) {
+  return lastLabelClickPos
+      && lastLabelClickPos.x == event.x
+      && lastLabelClickPos.y == event.y;
+}
+
+/*
+ * Update the given pointer based upon the given DOMEvent.
+ * Distance, velocity, direction, duration, etc
+ */
+function updatePointerState(ev, pointer) {
+  var point = getEventPoint(ev);
+  var x = pointer.x = point.pageX;
+  var y = pointer.y = point.pageY;
+
+  pointer.distanceX = x - pointer.startX;
+  pointer.distanceY = y - pointer.startY;
+  pointer.distance = Math.sqrt(
+    pointer.distanceX * pointer.distanceX + pointer.distanceY * pointer.distanceY
+  );
+
+  pointer.directionX = pointer.distanceX > 0 ? 'right' : pointer.distanceX < 0 ? 'left' : '';
+  pointer.directionY = pointer.distanceY > 0 ? 'down' : pointer.distanceY < 0 ? 'up' : '';
+
+  pointer.duration = +Date.now() - pointer.startTime;
+  pointer.velocityX = pointer.distanceX / pointer.duration;
+  pointer.velocityY = pointer.distanceY / pointer.duration;
+}
+
+/*
+ * Normalize the point where the DOM event happened whether it's touch or mouse.
+ * @returns point event obj with pageX and pageY on it.
+ */
+function getEventPoint(ev) {
+  ev = ev.originalEvent || ev; // support jQuery events
+  return (ev.touches && ev.touches[0]) ||
+    (ev.changedTouches && ev.changedTouches[0]) ||
+    ev;
+}
+
+(function() {
+  'use strict';
+
+  var $mdUtil, $interpolate, $log;
+
+  var SUFFIXES = /(-gt)?-(sm|md|lg|print)/g;
+  var WHITESPACE = /\s+/g;
+
+  var FLEX_OPTIONS = ['grow', 'initial', 'auto', 'none', 'noshrink', 'nogrow' ];
+  var LAYOUT_OPTIONS = ['row', 'column'];
+  var ALIGNMENT_MAIN_AXIS= [ "", "start", "center", "end", "stretch", "space-around", "space-between" ];
+  var ALIGNMENT_CROSS_AXIS= [ "", "start", "center", "end", "stretch" ];
+
+  var config = {
+    /**
+     * Enable directive attribute-to-class conversions
+     * Developers can use `<body md-layout-css />` to quickly
+     * disable the Layout directives and prohibit the injection of Layout classNames
+     */
+    enabled: true,
+
+    /**
+     * List of mediaQuery breakpoints and associated suffixes
+     *
+     *   [
+     *    { suffix: "sm", mediaQuery: "screen and (max-width: 599px)" },
+     *    { suffix: "md", mediaQuery: "screen and (min-width: 600px) and (max-width: 959px)" }
+     *   ]
+     */
+    breakpoints: []
+  };
+
+  registerLayoutAPI( angular.module('material.core.layout', ['ng']) );
+
+  /**
+   *   registerLayoutAPI()
+   *
+   *   The original ngMaterial Layout solution used attribute selectors and CSS.
+   *
+   *  ```html
+   *  <div layout="column"> My Content </div>
+   *  ```
+   *
+   *  ```css
+   *  [layout] {
+   *    box-sizing: border-box;
+   *    display:flex;
+   *  }
+   *  [layout=column] {
+   *    flex-direction : column
+   *  }
+   *  ```
+   *
+   *  Use of attribute selectors creates significant performance impacts in some
+   *  browsers... mainly IE.
+   *
+   *  This module registers directives that allow the same layout attributes to be
+   *  interpreted and converted to class selectors. The directive will add equivalent classes to each element that
+   *  contains a Layout directive.
+   *
+   * ```html
+   *   <div layout="column" class="layout layout-column"> My Content </div>
+   *```
+   *
+   *  ```css
+   *  .layout {
+   *    box-sizing: border-box;
+   *    display:flex;
+   *  }
+   *  .layout-column {
+   *    flex-direction : column
+   *  }
+   *  ```
+   */
+  function registerLayoutAPI(module){
+    var PREFIX_REGEXP = /^((?:x|data)[\:\-_])/i;
+    var SPECIAL_CHARS_REGEXP = /([\:\-\_]+(.))/g;
+
+    // NOTE: these are also defined in constants::MEDIA_PRIORITY and constants::MEDIA
+    var BREAKPOINTS     = [ "", "xs", "gt-xs", "sm", "gt-sm", "md", "gt-md", "lg", "gt-lg", "xl", "print" ];
+    var API_WITH_VALUES = [ "layout", "flex", "flex-order", "flex-offset", "layout-align" ];
+    var API_NO_VALUES   = [ "show", "hide", "layout-padding", "layout-margin" ];
+
+
+    // Build directive registration functions for the standard Layout API... for all breakpoints.
+    angular.forEach(BREAKPOINTS, function(mqb) {
+
+      // Attribute directives with expected, observable value(s)
+      angular.forEach( API_WITH_VALUES, function(name){
+        var fullName = mqb ? name + "-" + mqb : name;
+        module.directive( directiveNormalize(fullName), attributeWithObserve(fullName));
+      });
+
+      // Attribute directives with no expected value(s)
+      angular.forEach( API_NO_VALUES, function(name){
+        var fullName = mqb ? name + "-" + mqb : name;
+        module.directive( directiveNormalize(fullName), attributeWithoutValue(fullName));
+      });
+
+    });
+
+    // Register other, special directive functions for the Layout features:
+    module
+      .directive('mdLayoutCss'  , disableLayoutDirective )
+      .directive('ngCloak'      ,  buildCloakInterceptor('ng-cloak'))
+
+      .directive('layoutWrap'   , attributeWithoutValue('layout-wrap'))
+      .directive('layoutNowrap' , attributeWithoutValue('layout-nowrap'))
+      .directive('layoutNoWrap' , attributeWithoutValue('layout-no-wrap'))
+      .directive('layoutFill'   , attributeWithoutValue('layout-fill'))
+
+      // !! Deprecated attributes: use the `-lt` (aka less-than) notations
+
+      .directive('layoutLtMd'     , warnAttrNotSupported('layout-lt-md', true))
+      .directive('layoutLtLg'     , warnAttrNotSupported('layout-lt-lg', true))
+      .directive('flexLtMd'       , warnAttrNotSupported('flex-lt-md', true))
+      .directive('flexLtLg'       , warnAttrNotSupported('flex-lt-lg', true))
+
+      .directive('layoutAlignLtMd', warnAttrNotSupported('layout-align-lt-md'))
+      .directive('layoutAlignLtLg', warnAttrNotSupported('layout-align-lt-lg'))
+      .directive('flexOrderLtMd'  , warnAttrNotSupported('flex-order-lt-md'))
+      .directive('flexOrderLtLg'  , warnAttrNotSupported('flex-order-lt-lg'))
+      .directive('offsetLtMd'     , warnAttrNotSupported('flex-offset-lt-md'))
+      .directive('offsetLtLg'     , warnAttrNotSupported('flex-offset-lt-lg'))
+
+      .directive('hideLtMd'       , warnAttrNotSupported('hide-lt-md'))
+      .directive('hideLtLg'       , warnAttrNotSupported('hide-lt-lg'))
+      .directive('showLtMd'       , warnAttrNotSupported('show-lt-md'))
+      .directive('showLtLg'       , warnAttrNotSupported('show-lt-lg'));
+
+    /**
+     * Converts snake_case to camelCase.
+     * Also there is special case for Moz prefix starting with upper case letter.
+     * @param name Name to normalize
+     */
+    function directiveNormalize(name) {
+      return name
+        .replace(PREFIX_REGEXP, '')
+        .replace(SPECIAL_CHARS_REGEXP, function(_, separator, letter, offset) {
+          return offset ? letter.toUpperCase() : letter;
+        });
+    }
+
+  }
+
+  /**
+   * Special directive that will disable ALL Layout conversions of layout
+   * attribute(s) to classname(s).
+   *
+   * <link rel="stylesheet" href="angular-material.min.css">
+   * <link rel="stylesheet" href="angular-material.layout.css">
+   *
+   * <body md-layout-css>
+   *  ...
+   * </body>
+   *
+   * Note: Using md-layout-css directive requires the developer to load the Material
+   * Layout Attribute stylesheet (which only uses attribute selectors):
+   *
+   *       `angular-material.layout.css`
+   *
+   * Another option is to use the LayoutProvider to configure and disable the attribute
+   * conversions; this would obviate the use of the `md-layout-css` directive
+   *
+   */
+  function disableLayoutDirective() {
+    return {
+      restrict : 'A',
+      priority : '900',
+      compile  : function(element, attr) {
+        config.enabled = false;
+        return angular.noop;
+      }
+    };
+  }
+
+  /**
+   * Tail-hook ngCloak to delay the uncloaking while Layout transformers
+   * finish processing. Eliminates flicker with Material.Layoouts
+   */
+  function buildCloakInterceptor(className) {
+    return [ '$timeout', function($timeout){
+      return {
+        restrict : 'A',
+        priority : -10,   // run after normal ng-cloak
+        compile  : function( element ) {
+          if (!config.enabled) return angular.noop;
+
+          // Re-add the cloak
+          element.addClass(className);
+
+          return function( scope, element ) {
+            // Wait while layout injectors configure, then uncloak
+            // NOTE: $rAF does not delay enough... and this is a 1x-only event,
+            //       $timeout is acceptable.
+            $timeout( function(){
+              element.removeClass(className);
+            }, 10, false);
+          };
+        }
+      };
+    }];
+  }
+
+
+  // *********************************************************************************
+  //
+  // These functions create registration functions for ngMaterial Layout attribute directives
+  // This provides easy translation to switch ngMaterial attribute selectors to
+  // CLASS selectors and directives; which has huge performance implications
+  // for IE Browsers
+  //
+  // *********************************************************************************
+
+  /**
+   * Creates a directive registration function where a possible dynamic attribute
+   * value will be observed/watched.
+   * @param {string} className attribute name; eg `layout-gt-md` with value ="row"
+   */
+  function attributeWithObserve(className) {
+
+    return ['$mdUtil', '$interpolate', "$log", function(_$mdUtil_, _$interpolate_, _$log_) {
+      $mdUtil = _$mdUtil_;
+      $interpolate = _$interpolate_;
+      $log = _$log_;
+
+      return {
+        restrict: 'A',
+        compile: function(element, attr) {
+          var linkFn;
+          if (config.enabled) {
+            // immediately replace static (non-interpolated) invalid values...
+
+            validateAttributeUsage(className, attr, element, $log);
+
+            validateAttributeValue( className,
+              getNormalizedAttrValue(className, attr, ""),
+              buildUpdateFn(element, className, attr)
+            );
+
+            linkFn = translateWithValueToCssClass;
+          }
+
+          // Use for postLink to account for transforms after ng-transclude.
+          return linkFn || angular.noop;
+        }
+      };
+    }];
+
+    /**
+     * Add as transformed class selector(s), then
+     * remove the deprecated attribute selector
+     */
+    function translateWithValueToCssClass(scope, element, attrs) {
+      var updateFn = updateClassWithValue(element, className, attrs);
+      var unwatch = attrs.$observe(attrs.$normalize(className), updateFn);
+
+      updateFn(getNormalizedAttrValue(className, attrs, ""));
+      scope.$on("$destroy", function() { unwatch() });
+    }
+  }
+
+  /**
+   * Creates a registration function for ngMaterial Layout attribute directive.
+   * This is a `simple` transpose of attribute usage to class usage; where we ignore
+   * any attribute value
+   */
+  function attributeWithoutValue(className) {
+    return ['$mdUtil', '$interpolate', "$log", function(_$mdUtil_, _$interpolate_, _$log_) {
+      $mdUtil = _$mdUtil_;
+      $interpolate = _$interpolate_;
+      $log = _$log_;
+
+      return {
+        restrict: 'A',
+        compile: function(element, attr) {
+          var linkFn;
+          if (config.enabled) {
+            // immediately replace static (non-interpolated) invalid values...
+
+            validateAttributeValue( className,
+              getNormalizedAttrValue(className, attr, ""),
+              buildUpdateFn(element, className, attr)
+            );
+
+            translateToCssClass(null, element);
+
+            // Use for postLink to account for transforms after ng-transclude.
+            linkFn = translateToCssClass;
+          }
+
+          return linkFn || angular.noop;
+        }
+      };
+    }];
+
+    /**
+     * Add as transformed class selector, then
+     * remove the deprecated attribute selector
+     */
+    function translateToCssClass(scope, element) {
+      element.addClass(className);
+    }
+  }
+
+
+
+  /**
+   * After link-phase, do NOT remove deprecated layout attribute selector.
+   * Instead watch the attribute so interpolated data-bindings to layout
+   * selectors will continue to be supported.
+   *
+   * $observe() the className and update with new class (after removing the last one)
+   *
+   * e.g. `layout="{{layoutDemo.direction}}"` will update...
+   *
+   * NOTE: The value must match one of the specified styles in the CSS.
+   * For example `flex-gt-md="{{size}}`  where `scope.size == 47` will NOT work since
+   * only breakpoints for 0, 5, 10, 15... 100, 33, 34, 66, 67 are defined.
+   *
+   */
+  function updateClassWithValue(element, className) {
+    var lastClass;
+
+    return function updateClassFn(newValue) {
+      var value = validateAttributeValue(className, newValue || "");
+      if ( angular.isDefined(value) ) {
+        if (lastClass) element.removeClass(lastClass);
+        lastClass = !value ? className : className + "-" + value.replace(WHITESPACE, "-");
+        element.addClass(lastClass);
+      }
+    };
+  }
+
+  /**
+   * Provide console warning that this layout attribute has been deprecated
+   *
+   */
+  function warnAttrNotSupported(className) {
+    var parts = className.split("-");
+    return ["$log", function($log) {
+      $log.warn(className + "has been deprecated. Please use a `" + parts[0] + "-gt-<xxx>` variant.");
+      return angular.noop;
+    }];
+  }
+
+  /**
+   * Centralize warnings for known flexbox issues (especially IE-related issues)
+   */
+  function validateAttributeUsage(className, attr, element, $log){
+    var message, usage, url;
+    var nodeName = element[0].nodeName.toLowerCase();
+
+    switch(className.replace(SUFFIXES,"")) {
+      case "flex":
+        if ((nodeName == "md-button") || (nodeName == "fieldset")){
+          // @see https://github.com/philipwalton/flexbugs#9-some-html-elements-cant-be-flex-containers
+          // Use <div flex> wrapper inside (preferred) or outside
+
+          usage = "<" + nodeName + " " + className + "></" + nodeName + ">";
+          url = "https://github.com/philipwalton/flexbugs#9-some-html-elements-cant-be-flex-containers";
+          message = "Markup '{0}' may not work as expected in IE Browsers. Consult '{1}' for details.";
+
+          $log.warn( $mdUtil.supplant(message, [usage, url]) );
+        }
+    }
+
+  }
+
+
+  /**
+   * For the Layout attribute value, validate or replace with default
+   * fallback value
+   */
+  function validateAttributeValue(className, value, updateFn) {
+    var origValue = value;
+
+    if (!needsInterpolation(value)) {
+      switch (className.replace(SUFFIXES,"")) {
+        case 'layout'        :
+          if ( !findIn(value, LAYOUT_OPTIONS) ) {
+            value = LAYOUT_OPTIONS[0];    // 'row';
+          }
+          break;
+
+        case 'flex'          :
+          if (!findIn(value, FLEX_OPTIONS)) {
+            if (isNaN(value)) {
+              value = '';
+            }
+          }
+          break;
+
+        case 'flex-offset' :
+        case 'flex-order'    :
+          if (!value || isNaN(+value)) {
+            value = '0';
+          }
+          break;
+
+        case 'layout-align'  :
+          var axis = extractAlignAxis(value);
+          value = $mdUtil.supplant("{main}-{cross}",axis);
+          break;
+
+        case 'layout-padding' :
+        case 'layout-margin'  :
+        case 'layout-fill'    :
+        case 'layout-wrap'    :
+        case 'layout-nowrap'  :
+        case 'layout-nowrap' :
+          value = '';
+          break;
+      }
+
+      if (value != origValue) {
+        (updateFn || angular.noop)(value);
+      }
+    }
+
+    return value;
+  }
+
+  /**
+   * Replace current attribute value with fallback value
+   */
+  function buildUpdateFn(element, className, attrs) {
+    return function updateAttrValue(fallback) {
+      if (!needsInterpolation(fallback)) {
+        // Do not modify the element's attribute value; so
+        // uses '<ui-layout layout="/api/sidebar.html" />' will not
+        // be affected. Just update the attrs value.
+        attrs[attrs.$normalize(className)] = fallback;
+      }
+    };
+  }
+
+  /**
+   * See if the original value has interpolation symbols:
+   * e.g.  flex-gt-md="{{triggerPoint}}"
+   */
+  function needsInterpolation(value) {
+    return (value || "").indexOf($interpolate.startSymbol()) > -1;
+  }
+
+  function getNormalizedAttrValue(className, attrs, defaultVal) {
+    var normalizedAttr = attrs.$normalize(className);
+    return attrs[normalizedAttr] ? attrs[normalizedAttr].replace(WHITESPACE, "-") : defaultVal || null;
+  }
+
+  function findIn(item, list, replaceWith) {
+    item = replaceWith && item ? item.replace(WHITESPACE, replaceWith) : item;
+
+    var found = false;
+    if (item) {
+      list.forEach(function(it) {
+        it = replaceWith ? it.replace(WHITESPACE, replaceWith) : it;
+        found = found || (it === item);
+      });
+    }
+    return found;
+  }
+
+  function extractAlignAxis(attrValue) {
+    var axis = {
+      main : "start",
+      cross: "stretch"
+    }, values;
+
+    attrValue = (attrValue || "");
+
+    if ( attrValue.indexOf("-") == 0 || attrValue.indexOf(" ") == 0) {
+      // For missing main-axis values
+      attrValue = "none" + attrValue;
+    }
+
+    values = attrValue.toLowerCase().trim().replace(WHITESPACE, "-").split("-");
+    if ( values.length && (values[0] === "space") ) {
+      // for main-axis values of "space-around" or "space-between"
+      values = [ values[0]+"-"+values[1],values[2] ];
+    }
+
+    if ( values.length > 0 ) axis.main  = values[0] || axis.main;
+    if ( values.length > 1 ) axis.cross = values[1] || axis.cross;
+
+    if ( ALIGNMENT_MAIN_AXIS.indexOf(axis.main) < 0 )   axis.main = "start";
+    if ( ALIGNMENT_CROSS_AXIS.indexOf(axis.cross) < 0 ) axis.cross = "stretch";
+
+    return axis;
+  }
+
+
+})();
+
 (function(){ 
-angular.module("material.core").constant("$MD_THEME_CSS", "/*  Only used with Theme processes */html.md-THEME_NAME-theme, body.md-THEME_NAME-theme {  color: '{{foreground-1}}';  background-color: '{{background-color}}'; }md-autocomplete.md-THEME_NAME-theme {  background: '{{background-A100}}'; }  md-autocomplete.md-THEME_NAME-theme[disabled]:not([md-floating-label]) {    background: '{{background-100}}'; }  md-autocomplete.md-THEME_NAME-theme button md-icon path {    fill: '{{background-600}}'; }  md-autocomplete.md-THEME_NAME-theme button:after {    background: '{{background-600-0.3}}'; }.md-autocomplete-suggestions-container.md-THEME_NAME-theme {  background: '{{background-A100}}'; }  .md-autocomplete-suggestions-container.md-THEME_NAME-theme li {    color: '{{background-900}}'; }    .md-autocomplete-suggestions-container.md-THEME_NAME-theme li .highlight {      color: '{{background-600}}'; }    .md-autocomplete-suggestions-container.md-THEME_NAME-theme li:hover, .md-autocomplete-suggestions-container.md-THEME_NAME-theme li.selected {      background: '{{background-200}}'; }.md-button.md-THEME_NAME-theme:not([disabled]):hover {  background-color: '{{background-500-0.2}}'; }.md-button.md-THEME_NAME-theme:not([disabled]).md-focused {  background-color: '{{background-500-0.2}}'; }.md-button.md-THEME_NAME-theme:not([disabled]).md-icon-button:hover {  background-color: transparent; }.md-button.md-THEME_NAME-theme.md-fab {  background-color: '{{accent-color}}';  color: '{{accent-contrast}}'; }  .md-button.md-THEME_NAME-theme.md-fab md-icon {    color: '{{accent-contrast}}'; }  .md-button.md-THEME_NAME-theme.md-fab:not([disabled]):hover {    background-color: '{{accent-A700}}'; }  .md-button.md-THEME_NAME-theme.md-fab:not([disabled]).md-focused {    background-color: '{{accent-A700}}'; }.md-button.md-THEME_NAME-theme.md-primary {  color: '{{primary-color}}'; }  .md-button.md-THEME_NAME-theme.md-primary.md-raised, .md-button.md-THEME_NAME-theme.md-primary.md-fab {    color: '{{primary-contrast}}';    background-color: '{{primary-color}}'; }    .md-button.md-THEME_NAME-theme.md-primary.md-raised:not([disabled]) md-icon, .md-button.md-THEME_NAME-theme.md-primary.md-fab:not([disabled]) md-icon {      color: '{{primary-contrast}}'; }    .md-button.md-THEME_NAME-theme.md-primary.md-raised:not([disabled]):hover, .md-button.md-THEME_NAME-theme.md-primary.md-fab:not([disabled]):hover {      background-color: '{{primary-600}}'; }    .md-button.md-THEME_NAME-theme.md-primary.md-raised:not([disabled]).md-focused, .md-button.md-THEME_NAME-theme.md-primary.md-fab:not([disabled]).md-focused {      background-color: '{{primary-600}}'; }  .md-button.md-THEME_NAME-theme.md-primary:not([disabled]) md-icon {    color: '{{primary-color}}'; }.md-button.md-THEME_NAME-theme.md-fab {  background-color: '{{accent-color}}';  color: '{{accent-contrast}}'; }  .md-button.md-THEME_NAME-theme.md-fab:not([disabled]) .md-icon {    color: '{{accent-contrast}}'; }  .md-button.md-THEME_NAME-theme.md-fab:not([disabled]):hover {    background-color: '{{accent-A700}}'; }  .md-button.md-THEME_NAME-theme.md-fab:not([disabled]).md-focused {    background-color: '{{accent-A700}}'; }.md-button.md-THEME_NAME-theme.md-raised {  color: '{{background-900}}';  background-color: '{{background-50}}'; }  .md-button.md-THEME_NAME-theme.md-raised:not([disabled]) md-icon {    color: '{{background-900}}'; }  .md-button.md-THEME_NAME-theme.md-raised:not([disabled]):hover {    background-color: '{{background-50}}'; }  .md-button.md-THEME_NAME-theme.md-raised:not([disabled]).md-focused {    background-color: '{{background-200}}'; }.md-button.md-THEME_NAME-theme.md-warn {  color: '{{warn-color}}'; }  .md-button.md-THEME_NAME-theme.md-warn.md-raised, .md-button.md-THEME_NAME-theme.md-warn.md-fab {    color: '{{warn-contrast}}';    background-color: '{{warn-color}}'; }    .md-button.md-THEME_NAME-theme.md-warn.md-raised:not([disabled]) md-icon, .md-button.md-THEME_NAME-theme.md-warn.md-fab:not([disabled]) md-icon {      color: '{{warn-contrast}}'; }    .md-button.md-THEME_NAME-theme.md-warn.md-raised:not([disabled]):hover, .md-button.md-THEME_NAME-theme.md-warn.md-fab:not([disabled]):hover {      background-color: '{{warn-600}}'; }    .md-button.md-THEME_NAME-theme.md-warn.md-raised:not([disabled]).md-focused, .md-button.md-THEME_NAME-theme.md-warn.md-fab:not([disabled]).md-focused {      background-color: '{{warn-600}}'; }  .md-button.md-THEME_NAME-theme.md-warn:not([disabled]) md-icon {    color: '{{warn-color}}'; }.md-button.md-THEME_NAME-theme.md-accent {  color: '{{accent-color}}'; }  .md-button.md-THEME_NAME-theme.md-accent.md-raised, .md-button.md-THEME_NAME-theme.md-accent.md-fab {    color: '{{accent-contrast}}';    background-color: '{{accent-color}}'; }    .md-button.md-THEME_NAME-theme.md-accent.md-raised:not([disabled]) md-icon, .md-button.md-THEME_NAME-theme.md-accent.md-fab:not([disabled]) md-icon {      color: '{{accent-contrast}}'; }    .md-button.md-THEME_NAME-theme.md-accent.md-raised:not([disabled]):hover, .md-button.md-THEME_NAME-theme.md-accent.md-fab:not([disabled]):hover {      background-color: '{{accent-A700}}'; }    .md-button.md-THEME_NAME-theme.md-accent.md-raised:not([disabled]).md-focused, .md-button.md-THEME_NAME-theme.md-accent.md-fab:not([disabled]).md-focused {      background-color: '{{accent-A700}}'; }  .md-button.md-THEME_NAME-theme.md-accent:not([disabled]) md-icon {    color: '{{accent-color}}'; }.md-button.md-THEME_NAME-theme[disabled], .md-button.md-THEME_NAME-theme.md-raised[disabled], .md-button.md-THEME_NAME-theme.md-fab[disabled], .md-button.md-THEME_NAME-theme.md-accent[disabled], .md-button.md-THEME_NAME-theme.md-warn[disabled] {  color: '{{foreground-3}}';  cursor: default; }  .md-button.md-THEME_NAME-theme[disabled] md-icon, .md-button.md-THEME_NAME-theme.md-raised[disabled] md-icon, .md-button.md-THEME_NAME-theme.md-fab[disabled] md-icon, .md-button.md-THEME_NAME-theme.md-accent[disabled] md-icon, .md-button.md-THEME_NAME-theme.md-warn[disabled] md-icon {    color: '{{foreground-3}}'; }.md-button.md-THEME_NAME-theme.md-raised[disabled], .md-button.md-THEME_NAME-theme.md-fab[disabled] {  background-color: '{{foreground-4}}'; }.md-button.md-THEME_NAME-theme[disabled] {  background-color: transparent; }._md a.md-THEME_NAME-theme:not(.md-button).md-primary {  color: '{{primary-color}}'; }  ._md a.md-THEME_NAME-theme:not(.md-button).md-primary:hover {    color: '{{primary-700}}'; }._md a.md-THEME_NAME-theme:not(.md-button).md-accent {  color: '{{accent-color}}'; }  ._md a.md-THEME_NAME-theme:not(.md-button).md-accent:hover {    color: '{{accent-700}}'; }._md a.md-THEME_NAME-theme:not(.md-button).md-accent {  color: '{{accent-color}}'; }  ._md a.md-THEME_NAME-theme:not(.md-button).md-accent:hover {    color: '{{accent-A700}}'; }._md a.md-THEME_NAME-theme:not(.md-button).md-warn {  color: '{{warn-color}}'; }  ._md a.md-THEME_NAME-theme:not(.md-button).md-warn:hover {    color: '{{warn-700}}'; }md-backdrop {  background-color: '{{background-900-0.0}}'; }  md-backdrop.md-opaque.md-THEME_NAME-theme {    background-color: '{{background-900-1.0}}'; }md-bottom-sheet.md-THEME_NAME-theme {  background-color: '{{background-50}}';  border-top-color: '{{background-300}}'; }  md-bottom-sheet.md-THEME_NAME-theme.md-list md-list-item {    color: '{{foreground-1}}'; }  md-bottom-sheet.md-THEME_NAME-theme .md-subheader {    background-color: '{{background-50}}'; }  md-bottom-sheet.md-THEME_NAME-theme .md-subheader {    color: '{{foreground-1}}'; }md-card.md-THEME_NAME-theme {  color: '{{foreground-1}}';  background-color: '{{background-hue-1}}';  border-radius: 2px; }  md-card.md-THEME_NAME-theme .md-card-image {    border-radius: 2px 2px 0 0; }  md-card.md-THEME_NAME-theme md-card-header md-card-avatar md-icon {    color: '{{background-color}}';    background-color: '{{foreground-3}}'; }  md-card.md-THEME_NAME-theme md-card-header md-card-header-text .md-subhead {    color: '{{foreground-2}}'; }  md-card.md-THEME_NAME-theme md-card-title md-card-title-text:not(:only-child) .md-subhead {    color: '{{foreground-2}}'; }md-chips.md-THEME_NAME-theme .md-chips {  box-shadow: 0 1px '{{foreground-4}}'; }  md-chips.md-THEME_NAME-theme .md-chips.md-focused {    box-shadow: 0 2px '{{primary-color}}'; }  md-chips.md-THEME_NAME-theme .md-chips ._md-chip-input-container input {    color: '{{foreground-1}}'; }    md-chips.md-THEME_NAME-theme .md-chips ._md-chip-input-container input::-webkit-input-placeholder {      color: '{{foreground-3}}'; }    md-chips.md-THEME_NAME-theme .md-chips ._md-chip-input-container input:-moz-placeholder {      color: '{{foreground-3}}'; }    md-chips.md-THEME_NAME-theme .md-chips ._md-chip-input-container input::-moz-placeholder {      color: '{{foreground-3}}'; }    md-chips.md-THEME_NAME-theme .md-chips ._md-chip-input-container input:-ms-input-placeholder {      color: '{{foreground-3}}'; }    md-chips.md-THEME_NAME-theme .md-chips ._md-chip-input-container input::-webkit-input-placeholder {      color: '{{foreground-3}}'; }md-chips.md-THEME_NAME-theme md-chip {  background: '{{background-300}}';  color: '{{background-800}}'; }  md-chips.md-THEME_NAME-theme md-chip md-icon {    color: '{{background-700}}'; }  md-chips.md-THEME_NAME-theme md-chip.md-focused {    background: '{{primary-color}}';    color: '{{primary-contrast}}'; }    md-chips.md-THEME_NAME-theme md-chip.md-focused md-icon {      color: '{{primary-contrast}}'; }  md-chips.md-THEME_NAME-theme md-chip._md-chip-editing {    background: transparent;    color: '{{background-800}}'; }md-chips.md-THEME_NAME-theme md-chip-remove .md-button md-icon path {  fill: '{{background-500}}'; }.md-contact-suggestion span.md-contact-email {  color: '{{background-400}}'; }/** Theme styles for mdCalendar. */.md-calendar.md-THEME_NAME-theme {  background: '{{background-A100}}';  color: '{{background-A200-0.87}}'; }  .md-calendar.md-THEME_NAME-theme tr:last-child td {    border-bottom-color: '{{background-200}}'; }.md-THEME_NAME-theme .md-calendar-day-header {  background: '{{background-300}}';  color: '{{background-A200-0.87}}'; }.md-THEME_NAME-theme .md-calendar-date.md-calendar-date-today .md-calendar-date-selection-indicator {  border: 1px solid '{{primary-500}}'; }.md-THEME_NAME-theme .md-calendar-date.md-calendar-date-today.md-calendar-date-disabled {  color: '{{primary-500-0.6}}'; }.md-THEME_NAME-theme .md-calendar-date.md-focus .md-calendar-date-selection-indicator {  background: '{{background-hue-1}}'; }.md-THEME_NAME-theme .md-calendar-date-selection-indicator:hover {  background: '{{background-300}}'; }.md-THEME_NAME-theme .md-calendar-date.md-calendar-selected-date .md-calendar-date-selection-indicator,.md-THEME_NAME-theme .md-calendar-date.md-focus.md-calendar-selected-date .md-calendar-date-selection-indicator {  background: '{{primary-500}}';  color: '{{primary-500-contrast}}';  border-color: transparent; }.md-THEME_NAME-theme .md-calendar-date-disabled,.md-THEME_NAME-theme .md-calendar-month-label-disabled {  color: '{{foreground-3}}'; }/** Theme styles for mdDatepicker. */.md-THEME_NAME-theme .md-datepicker-input {  color: '{{foreground-1}}'; }  .md-THEME_NAME-theme .md-datepicker-input::-webkit-input-placeholder {    color: '{{foreground-3}}'; }  .md-THEME_NAME-theme .md-datepicker-input:-moz-placeholder {    color: '{{foreground-3}}'; }  .md-THEME_NAME-theme .md-datepicker-input::-moz-placeholder {    color: '{{foreground-3}}'; }  .md-THEME_NAME-theme .md-datepicker-input:-ms-input-placeholder {    color: '{{foreground-3}}'; }  .md-THEME_NAME-theme .md-datepicker-input::-webkit-input-placeholder {    color: '{{foreground-3}}'; }.md-THEME_NAME-theme .md-datepicker-input-container {  border-bottom-color: '{{background-300}}'; }  .md-THEME_NAME-theme .md-datepicker-input-container.md-datepicker-focused {    border-bottom-color: '{{primary-500}}'; }  .md-THEME_NAME-theme .md-datepicker-input-container.md-datepicker-invalid {    border-bottom-color: '{{warn-A700}}'; }.md-THEME_NAME-theme .md-datepicker-calendar-pane {  border-color: '{{background-hue-1}}'; }.md-THEME_NAME-theme .md-datepicker-triangle-button .md-datepicker-expand-triangle {  border-top-color: '{{foreground-3}}'; }.md-THEME_NAME-theme .md-datepicker-triangle-button:hover .md-datepicker-expand-triangle {  border-top-color: '{{foreground-2}}'; }.md-THEME_NAME-theme .md-datepicker-open .md-datepicker-calendar-icon {  fill: '{{primary-500}}'; }.md-THEME_NAME-theme .md-datepicker-open .md-datepicker-input-container,.md-THEME_NAME-theme .md-datepicker-input-mask-opaque {  background: '{{background-hue-1}}'; }.md-THEME_NAME-theme .md-datepicker-calendar {  background: '{{background-A100}}'; }md-dialog.md-THEME_NAME-theme {  border-radius: 4px;  background-color: '{{background-hue-1}}'; }  md-dialog.md-THEME_NAME-theme.md-content-overflow .md-actions, md-dialog.md-THEME_NAME-theme.md-content-overflow md-dialog-actions {    border-top-color: '{{foreground-4}}'; }md-checkbox.md-THEME_NAME-theme .md-ripple {  color: '{{accent-A700}}'; }md-checkbox.md-THEME_NAME-theme.md-checked .md-ripple {  color: '{{background-600}}'; }md-checkbox.md-THEME_NAME-theme.md-checked.md-focused ._md-container:before {  background-color: '{{accent-color-0.26}}'; }md-checkbox.md-THEME_NAME-theme .md-ink-ripple {  color: '{{foreground-2}}'; }md-checkbox.md-THEME_NAME-theme.md-checked .md-ink-ripple {  color: '{{accent-color-0.87}}'; }md-checkbox.md-THEME_NAME-theme ._md-icon {  border-color: '{{foreground-2}}'; }md-checkbox.md-THEME_NAME-theme.md-checked ._md-icon {  background-color: '{{accent-color-0.87}}'; }md-checkbox.md-THEME_NAME-theme.md-checked ._md-icon:after {  border-color: '{{accent-contrast-0.87}}'; }md-checkbox.md-THEME_NAME-theme:not([disabled]).md-primary .md-ripple {  color: '{{primary-600}}'; }md-checkbox.md-THEME_NAME-theme:not([disabled]).md-primary.md-checked .md-ripple {  color: '{{background-600}}'; }md-checkbox.md-THEME_NAME-theme:not([disabled]).md-primary .md-ink-ripple {  color: '{{foreground-2}}'; }md-checkbox.md-THEME_NAME-theme:not([disabled]).md-primary.md-checked .md-ink-ripple {  color: '{{primary-color-0.87}}'; }md-checkbox.md-THEME_NAME-theme:not([disabled]).md-primary ._md-icon {  border-color: '{{foreground-2}}'; }md-checkbox.md-THEME_NAME-theme:not([disabled]).md-primary.md-checked ._md-icon {  background-color: '{{primary-color-0.87}}'; }md-checkbox.md-THEME_NAME-theme:not([disabled]).md-primary.md-checked.md-focused ._md-container:before {  background-color: '{{primary-color-0.26}}'; }md-checkbox.md-THEME_NAME-theme:not([disabled]).md-primary.md-checked ._md-icon:after {  border-color: '{{primary-contrast-0.87}}'; }md-checkbox.md-THEME_NAME-theme:not([disabled]).md-primary .md-indeterminate[disabled] ._md-container {  color: '{{foreground-3}}'; }md-checkbox.md-THEME_NAME-theme:not([disabled]).md-warn .md-ripple {  color: '{{warn-600}}'; }md-checkbox.md-THEME_NAME-theme:not([disabled]).md-warn .md-ink-ripple {  color: '{{foreground-2}}'; }md-checkbox.md-THEME_NAME-theme:not([disabled]).md-warn.md-checked .md-ink-ripple {  color: '{{warn-color-0.87}}'; }md-checkbox.md-THEME_NAME-theme:not([disabled]).md-warn ._md-icon {  border-color: '{{foreground-2}}'; }md-checkbox.md-THEME_NAME-theme:not([disabled]).md-warn.md-checked ._md-icon {  background-color: '{{warn-color-0.87}}'; }md-checkbox.md-THEME_NAME-theme:not([disabled]).md-warn.md-checked.md-focused:not([disabled]) ._md-container:before {  background-color: '{{warn-color-0.26}}'; }md-checkbox.md-THEME_NAME-theme:not([disabled]).md-warn.md-checked ._md-icon:after {  border-color: '{{background-200}}'; }md-checkbox.md-THEME_NAME-theme[disabled] ._md-icon {  border-color: '{{foreground-3}}'; }md-checkbox.md-THEME_NAME-theme[disabled].md-checked ._md-icon {  background-color: '{{foreground-3}}'; }md-checkbox.md-THEME_NAME-theme[disabled].md-checked ._md-icon:after {  border-color: '{{background-200}}'; }md-checkbox.md-THEME_NAME-theme[disabled] ._md-label {  color: '{{foreground-3}}'; }md-divider.md-THEME_NAME-theme {  border-top-color: '{{foreground-4}}'; }.layout-row > md-divider.md-THEME_NAME-theme,.layout-xs-row > md-divider.md-THEME_NAME-theme, .layout-gt-xs-row > md-divider.md-THEME_NAME-theme,.layout-sm-row > md-divider.md-THEME_NAME-theme, .layout-gt-sm-row > md-divider.md-THEME_NAME-theme,.layout-md-row > md-divider.md-THEME_NAME-theme, .layout-gt-md-row > md-divider.md-THEME_NAME-theme,.layout-lg-row > md-divider.md-THEME_NAME-theme, .layout-gt-lg-row > md-divider.md-THEME_NAME-theme,.layout-xl-row > md-divider.md-THEME_NAME-theme {  border-right-color: '{{foreground-4}}'; }md-content.md-THEME_NAME-theme {  color: '{{foreground-1}}';  background-color: '{{background-default}}'; }md-icon.md-THEME_NAME-theme {  color: '{{foreground-2}}'; }  md-icon.md-THEME_NAME-theme.md-primary {    color: '{{primary-color}}'; }  md-icon.md-THEME_NAME-theme.md-accent {    color: '{{accent-color}}'; }  md-icon.md-THEME_NAME-theme.md-warn {    color: '{{warn-color}}'; }md-input-container.md-THEME_NAME-theme .md-input {  color: '{{foreground-1}}';  border-color: '{{foreground-4}}'; }  md-input-container.md-THEME_NAME-theme .md-input::-webkit-input-placeholder {    color: '{{foreground-3}}'; }  md-input-container.md-THEME_NAME-theme .md-input:-moz-placeholder {    color: '{{foreground-3}}'; }  md-input-container.md-THEME_NAME-theme .md-input::-moz-placeholder {    color: '{{foreground-3}}'; }  md-input-container.md-THEME_NAME-theme .md-input:-ms-input-placeholder {    color: '{{foreground-3}}'; }  md-input-container.md-THEME_NAME-theme .md-input::-webkit-input-placeholder {    color: '{{foreground-3}}'; }md-input-container.md-THEME_NAME-theme > md-icon {  color: '{{foreground-1}}'; }md-input-container.md-THEME_NAME-theme label,md-input-container.md-THEME_NAME-theme ._md-placeholder {  color: '{{foreground-3}}'; }md-input-container.md-THEME_NAME-theme label.md-required:after {  color: '{{warn-A700}}'; }md-input-container.md-THEME_NAME-theme:not(.md-input-focused):not(.md-input-invalid) label.md-required:after {  color: '{{foreground-2}}'; }md-input-container.md-THEME_NAME-theme .md-input-messages-animation, md-input-container.md-THEME_NAME-theme .md-input-message-animation {  color: '{{warn-A700}}'; }  md-input-container.md-THEME_NAME-theme .md-input-messages-animation .md-char-counter, md-input-container.md-THEME_NAME-theme .md-input-message-animation .md-char-counter {    color: '{{foreground-1}}'; }md-input-container.md-THEME_NAME-theme:not(.md-input-invalid).md-input-has-value label {  color: '{{foreground-2}}'; }md-input-container.md-THEME_NAME-theme:not(.md-input-invalid).md-input-focused .md-input {  border-color: '{{primary-color}}'; }md-input-container.md-THEME_NAME-theme:not(.md-input-invalid).md-input-focused label {  color: '{{primary-color}}'; }md-input-container.md-THEME_NAME-theme:not(.md-input-invalid).md-input-focused md-icon {  color: '{{primary-color}}'; }md-input-container.md-THEME_NAME-theme:not(.md-input-invalid).md-input-focused.md-accent .md-input {  border-color: '{{accent-color}}'; }md-input-container.md-THEME_NAME-theme:not(.md-input-invalid).md-input-focused.md-accent label {  color: '{{accent-color}}'; }md-input-container.md-THEME_NAME-theme:not(.md-input-invalid).md-input-focused.md-warn .md-input {  border-color: '{{warn-A700}}'; }md-input-container.md-THEME_NAME-theme:not(.md-input-invalid).md-input-focused.md-warn label {  color: '{{warn-A700}}'; }md-input-container.md-THEME_NAME-theme.md-input-invalid .md-input {  border-color: '{{warn-A700}}'; }md-input-container.md-THEME_NAME-theme.md-input-invalid label {  color: '{{warn-A700}}'; }md-input-container.md-THEME_NAME-theme.md-input-invalid .md-input-message-animation, md-input-container.md-THEME_NAME-theme.md-input-invalid .md-char-counter {  color: '{{warn-A700}}'; }md-input-container.md-THEME_NAME-theme .md-input[disabled],[disabled] md-input-container.md-THEME_NAME-theme .md-input {  border-bottom-color: transparent;  color: '{{foreground-3}}';  background-image: linear-gradient(to right, \"{{foreground-3}}\" 0%, \"{{foreground-3}}\" 33%, transparent 0%);  background-image: -ms-linear-gradient(left, transparent 0%, \"{{foreground-3}}\" 100%); }md-list.md-THEME_NAME-theme md-list-item.md-2-line .md-list-item-text h3, md-list.md-THEME_NAME-theme md-list-item.md-2-line .md-list-item-text h4,md-list.md-THEME_NAME-theme md-list-item.md-3-line .md-list-item-text h3,md-list.md-THEME_NAME-theme md-list-item.md-3-line .md-list-item-text h4 {  color: '{{foreground-1}}'; }md-list.md-THEME_NAME-theme md-list-item.md-2-line .md-list-item-text p,md-list.md-THEME_NAME-theme md-list-item.md-3-line .md-list-item-text p {  color: '{{foreground-2}}'; }md-list.md-THEME_NAME-theme ._md-proxy-focus.md-focused div._md-no-style {  background-color: '{{background-100}}'; }md-list.md-THEME_NAME-theme md-list-item .md-avatar-icon {  background-color: '{{foreground-3}}';  color: '{{background-color}}'; }md-list.md-THEME_NAME-theme md-list-item > md-icon {  color: '{{foreground-2}}'; }  md-list.md-THEME_NAME-theme md-list-item > md-icon.md-highlight {    color: '{{primary-color}}'; }    md-list.md-THEME_NAME-theme md-list-item > md-icon.md-highlight.md-accent {      color: '{{accent-color}}'; }md-progress-circular.md-THEME_NAME-theme path {  stroke: '{{primary-color}}'; }md-progress-circular.md-THEME_NAME-theme.md-warn path {  stroke: '{{warn-color}}'; }md-progress-circular.md-THEME_NAME-theme.md-accent path {  stroke: '{{accent-color}}'; }md-progress-linear.md-THEME_NAME-theme ._md-container {  background-color: '{{primary-100}}'; }md-progress-linear.md-THEME_NAME-theme ._md-bar {  background-color: '{{primary-color}}'; }md-progress-linear.md-THEME_NAME-theme.md-warn ._md-container {  background-color: '{{warn-100}}'; }md-progress-linear.md-THEME_NAME-theme.md-warn ._md-bar {  background-color: '{{warn-color}}'; }md-progress-linear.md-THEME_NAME-theme.md-accent ._md-container {  background-color: '{{accent-A100}}'; }md-progress-linear.md-THEME_NAME-theme.md-accent ._md-bar {  background-color: '{{accent-color}}'; }md-progress-linear.md-THEME_NAME-theme[md-mode=buffer].md-warn ._md-bar1 {  background-color: '{{warn-100}}'; }md-progress-linear.md-THEME_NAME-theme[md-mode=buffer].md-warn ._md-dashed:before {  background: radial-gradient(\"{{warn-100}}\" 0%, \"{{warn-100}}\" 16%, transparent 42%); }md-progress-linear.md-THEME_NAME-theme[md-mode=buffer].md-accent ._md-bar1 {  background-color: '{{accent-A100}}'; }md-progress-linear.md-THEME_NAME-theme[md-mode=buffer].md-accent ._md-dashed:before {  background: radial-gradient(\"{{accent-A100}}\" 0%, \"{{accent-A100}}\" 16%, transparent 42%); }md-radio-button.md-THEME_NAME-theme ._md-off {  border-color: '{{foreground-2}}'; }md-radio-button.md-THEME_NAME-theme ._md-on {  background-color: '{{accent-color-0.87}}'; }md-radio-button.md-THEME_NAME-theme.md-checked ._md-off {  border-color: '{{accent-color-0.87}}'; }md-radio-button.md-THEME_NAME-theme.md-checked .md-ink-ripple {  color: '{{accent-color-0.87}}'; }md-radio-button.md-THEME_NAME-theme ._md-container .md-ripple {  color: '{{accent-A700}}'; }md-radio-group.md-THEME_NAME-theme:not([disabled]) .md-primary ._md-on, md-radio-group.md-THEME_NAME-theme:not([disabled]).md-primary ._md-on,md-radio-button.md-THEME_NAME-theme:not([disabled]) .md-primary ._md-on,md-radio-button.md-THEME_NAME-theme:not([disabled]).md-primary ._md-on {  background-color: '{{primary-color-0.87}}'; }md-radio-group.md-THEME_NAME-theme:not([disabled]) .md-primary .md-checked ._md-off, md-radio-group.md-THEME_NAME-theme:not([disabled]) .md-primary.md-checked ._md-off, md-radio-group.md-THEME_NAME-theme:not([disabled]).md-primary .md-checked ._md-off, md-radio-group.md-THEME_NAME-theme:not([disabled]).md-primary.md-checked ._md-off,md-radio-button.md-THEME_NAME-theme:not([disabled]) .md-primary .md-checked ._md-off,md-radio-button.md-THEME_NAME-theme:not([disabled]) .md-primary.md-checked ._md-off,md-radio-button.md-THEME_NAME-theme:not([disabled]).md-primary .md-checked ._md-off,md-radio-button.md-THEME_NAME-theme:not([disabled]).md-primary.md-checked ._md-off {  border-color: '{{primary-color-0.87}}'; }md-radio-group.md-THEME_NAME-theme:not([disabled]) .md-primary .md-checked .md-ink-ripple, md-radio-group.md-THEME_NAME-theme:not([disabled]) .md-primary.md-checked .md-ink-ripple, md-radio-group.md-THEME_NAME-theme:not([disabled]).md-primary .md-checked .md-ink-ripple, md-radio-group.md-THEME_NAME-theme:not([disabled]).md-primary.md-checked .md-ink-ripple,md-radio-button.md-THEME_NAME-theme:not([disabled]) .md-primary .md-checked .md-ink-ripple,md-radio-button.md-THEME_NAME-theme:not([disabled]) .md-primary.md-checked .md-ink-ripple,md-radio-button.md-THEME_NAME-theme:not([disabled]).md-primary .md-checked .md-ink-ripple,md-radio-button.md-THEME_NAME-theme:not([disabled]).md-primary.md-checked .md-ink-ripple {  color: '{{primary-color-0.87}}'; }md-radio-group.md-THEME_NAME-theme:not([disabled]) .md-primary ._md-container .md-ripple, md-radio-group.md-THEME_NAME-theme:not([disabled]).md-primary ._md-container .md-ripple,md-radio-button.md-THEME_NAME-theme:not([disabled]) .md-primary ._md-container .md-ripple,md-radio-button.md-THEME_NAME-theme:not([disabled]).md-primary ._md-container .md-ripple {  color: '{{primary-600}}'; }md-radio-group.md-THEME_NAME-theme:not([disabled]) .md-warn ._md-on, md-radio-group.md-THEME_NAME-theme:not([disabled]).md-warn ._md-on,md-radio-button.md-THEME_NAME-theme:not([disabled]) .md-warn ._md-on,md-radio-button.md-THEME_NAME-theme:not([disabled]).md-warn ._md-on {  background-color: '{{warn-color-0.87}}'; }md-radio-group.md-THEME_NAME-theme:not([disabled]) .md-warn .md-checked ._md-off, md-radio-group.md-THEME_NAME-theme:not([disabled]) .md-warn.md-checked ._md-off, md-radio-group.md-THEME_NAME-theme:not([disabled]).md-warn .md-checked ._md-off, md-radio-group.md-THEME_NAME-theme:not([disabled]).md-warn.md-checked ._md-off,md-radio-button.md-THEME_NAME-theme:not([disabled]) .md-warn .md-checked ._md-off,md-radio-button.md-THEME_NAME-theme:not([disabled]) .md-warn.md-checked ._md-off,md-radio-button.md-THEME_NAME-theme:not([disabled]).md-warn .md-checked ._md-off,md-radio-button.md-THEME_NAME-theme:not([disabled]).md-warn.md-checked ._md-off {  border-color: '{{warn-color-0.87}}'; }md-radio-group.md-THEME_NAME-theme:not([disabled]) .md-warn .md-checked .md-ink-ripple, md-radio-group.md-THEME_NAME-theme:not([disabled]) .md-warn.md-checked .md-ink-ripple, md-radio-group.md-THEME_NAME-theme:not([disabled]).md-warn .md-checked .md-ink-ripple, md-radio-group.md-THEME_NAME-theme:not([disabled]).md-warn.md-checked .md-ink-ripple,md-radio-button.md-THEME_NAME-theme:not([disabled]) .md-warn .md-checked .md-ink-ripple,md-radio-button.md-THEME_NAME-theme:not([disabled]) .md-warn.md-checked .md-ink-ripple,md-radio-button.md-THEME_NAME-theme:not([disabled]).md-warn .md-checked .md-ink-ripple,md-radio-button.md-THEME_NAME-theme:not([disabled]).md-warn.md-checked .md-ink-ripple {  color: '{{warn-color-0.87}}'; }md-radio-group.md-THEME_NAME-theme:not([disabled]) .md-warn ._md-container .md-ripple, md-radio-group.md-THEME_NAME-theme:not([disabled]).md-warn ._md-container .md-ripple,md-radio-button.md-THEME_NAME-theme:not([disabled]) .md-warn ._md-container .md-ripple,md-radio-button.md-THEME_NAME-theme:not([disabled]).md-warn ._md-container .md-ripple {  color: '{{warn-600}}'; }md-radio-group.md-THEME_NAME-theme[disabled],md-radio-button.md-THEME_NAME-theme[disabled] {  color: '{{foreground-3}}'; }  md-radio-group.md-THEME_NAME-theme[disabled] ._md-container ._md-off,  md-radio-button.md-THEME_NAME-theme[disabled] ._md-container ._md-off {    border-color: '{{foreground-3}}'; }  md-radio-group.md-THEME_NAME-theme[disabled] ._md-container ._md-on,  md-radio-button.md-THEME_NAME-theme[disabled] ._md-container ._md-on {    border-color: '{{foreground-3}}'; }md-radio-group.md-THEME_NAME-theme .md-checked .md-ink-ripple {  color: '{{accent-color-0.26}}'; }md-radio-group.md-THEME_NAME-theme.md-primary .md-checked:not([disabled]) .md-ink-ripple, md-radio-group.md-THEME_NAME-theme .md-checked:not([disabled]).md-primary .md-ink-ripple {  color: '{{primary-color-0.26}}'; }md-radio-group.md-THEME_NAME-theme .md-checked.md-primary .md-ink-ripple {  color: '{{warn-color-0.26}}'; }md-radio-group.md-THEME_NAME-theme.md-focused:not(:empty) .md-checked ._md-container:before {  background-color: '{{accent-color-0.26}}'; }md-radio-group.md-THEME_NAME-theme.md-focused:not(:empty).md-primary .md-checked ._md-container:before,md-radio-group.md-THEME_NAME-theme.md-focused:not(:empty) .md-checked.md-primary ._md-container:before {  background-color: '{{primary-color-0.26}}'; }md-radio-group.md-THEME_NAME-theme.md-focused:not(:empty).md-warn .md-checked ._md-container:before,md-radio-group.md-THEME_NAME-theme.md-focused:not(:empty) .md-checked.md-warn ._md-container:before {  background-color: '{{warn-color-0.26}}'; }md-select.md-THEME_NAME-theme[disabled] ._md-select-value {  border-bottom-color: transparent;  background-image: linear-gradient(to right, \"{{foreground-3}}\" 0%, \"{{foreground-3}}\" 33%, transparent 0%);  background-image: -ms-linear-gradient(left, transparent 0%, \"{{foreground-3}}\" 100%); }md-select.md-THEME_NAME-theme ._md-select-value {  border-bottom-color: '{{foreground-4}}'; }  md-select.md-THEME_NAME-theme ._md-select-value._md-select-placeholder {    color: '{{foreground-3}}'; }md-select.md-THEME_NAME-theme.md-no-border ._md-select-value {  border-bottom-color: transparent; }md-select.md-THEME_NAME-theme.ng-invalid.ng-dirty ._md-select-value {  color: '{{warn-A700}}' !important;  border-bottom-color: '{{warn-A700}}' !important; }md-select.md-THEME_NAME-theme:not([disabled]):focus ._md-select-value {  border-bottom-color: '{{primary-color}}';  color: '{{ foreground-1 }}'; }  md-select.md-THEME_NAME-theme:not([disabled]):focus ._md-select-value._md-select-placeholder {    color: '{{ foreground-1 }}'; }md-select.md-THEME_NAME-theme:not([disabled]):focus.md-accent ._md-select-value {  border-bottom-color: '{{accent-color}}'; }md-select.md-THEME_NAME-theme:not([disabled]):focus.md-warn ._md-select-value {  border-bottom-color: '{{warn-color}}'; }md-select.md-THEME_NAME-theme[disabled] ._md-select-value {  color: '{{foreground-3}}'; }  md-select.md-THEME_NAME-theme[disabled] ._md-select-value._md-select-placeholder {    color: '{{foreground-3}}'; }md-select-menu.md-THEME_NAME-theme md-content {  background: '{{background-A100}}'; }  md-select-menu.md-THEME_NAME-theme md-content md-optgroup {    color: '{{background-600-0.87}}'; }  md-select-menu.md-THEME_NAME-theme md-content md-option {    color: '{{background-900-0.87}}'; }    md-select-menu.md-THEME_NAME-theme md-content md-option[disabled] ._md-text {      color: '{{background-400-0.87}}'; }    md-select-menu.md-THEME_NAME-theme md-content md-option:not([disabled]):focus, md-select-menu.md-THEME_NAME-theme md-content md-option:not([disabled]):hover {      background: '{{background-200}}'; }    md-select-menu.md-THEME_NAME-theme md-content md-option[selected] {      color: '{{primary-500}}'; }      md-select-menu.md-THEME_NAME-theme md-content md-option[selected]:focus {        color: '{{primary-600}}'; }      md-select-menu.md-THEME_NAME-theme md-content md-option[selected].md-accent {        color: '{{accent-color}}'; }        md-select-menu.md-THEME_NAME-theme md-content md-option[selected].md-accent:focus {          color: '{{accent-A700}}'; }._md-checkbox-enabled.md-THEME_NAME-theme .md-ripple {  color: '{{primary-600}}'; }._md-checkbox-enabled.md-THEME_NAME-theme[selected] .md-ripple {  color: '{{background-600}}'; }._md-checkbox-enabled.md-THEME_NAME-theme .md-ink-ripple {  color: '{{foreground-2}}'; }._md-checkbox-enabled.md-THEME_NAME-theme[selected] .md-ink-ripple {  color: '{{primary-color-0.87}}'; }._md-checkbox-enabled.md-THEME_NAME-theme ._md-icon {  border-color: '{{foreground-2}}'; }._md-checkbox-enabled.md-THEME_NAME-theme[selected] ._md-icon {  background-color: '{{primary-color-0.87}}'; }._md-checkbox-enabled.md-THEME_NAME-theme[selected].md-focused ._md-container:before {  background-color: '{{primary-color-0.26}}'; }._md-checkbox-enabled.md-THEME_NAME-theme[selected] ._md-icon:after {  border-color: '{{primary-contrast-0.87}}'; }._md-checkbox-enabled.md-THEME_NAME-theme .md-indeterminate[disabled] ._md-container {  color: '{{foreground-3}}'; }._md-checkbox-enabled.md-THEME_NAME-theme md-option ._md-text {  color: '{{background-900-0.87}}'; }md-sidenav.md-THEME_NAME-theme, md-sidenav.md-THEME_NAME-theme md-content {  background-color: '{{background-hue-1}}'; }md-slider.md-THEME_NAME-theme ._md-track {  background-color: '{{foreground-3}}'; }md-slider.md-THEME_NAME-theme ._md-track-ticks {  color: '{{background-contrast}}'; }md-slider.md-THEME_NAME-theme ._md-focus-ring {  background-color: '{{accent-A200-0.2}}'; }md-slider.md-THEME_NAME-theme ._md-disabled-thumb {  border-color: '{{background-color}}';  background-color: '{{background-color}}'; }md-slider.md-THEME_NAME-theme._md-min ._md-thumb:after {  background-color: '{{background-color}}';  border-color: '{{foreground-3}}'; }md-slider.md-THEME_NAME-theme._md-min ._md-focus-ring {  background-color: '{{foreground-3-0.38}}'; }md-slider.md-THEME_NAME-theme._md-min[md-discrete] ._md-thumb:after {  background-color: '{{background-contrast}}';  border-color: transparent; }md-slider.md-THEME_NAME-theme._md-min[md-discrete] ._md-sign {  background-color: '{{background-400}}'; }  md-slider.md-THEME_NAME-theme._md-min[md-discrete] ._md-sign:after {    border-top-color: '{{background-400}}'; }md-slider.md-THEME_NAME-theme._md-min[md-discrete][md-vertical] ._md-sign:after {  border-top-color: transparent;  border-left-color: '{{background-400}}'; }md-slider.md-THEME_NAME-theme ._md-track._md-track-fill {  background-color: '{{accent-color}}'; }md-slider.md-THEME_NAME-theme ._md-thumb:after {  border-color: '{{accent-color}}';  background-color: '{{accent-color}}'; }md-slider.md-THEME_NAME-theme ._md-sign {  background-color: '{{accent-color}}'; }  md-slider.md-THEME_NAME-theme ._md-sign:after {    border-top-color: '{{accent-color}}'; }md-slider.md-THEME_NAME-theme[md-vertical] ._md-sign:after {  border-top-color: transparent;  border-left-color: '{{accent-color}}'; }md-slider.md-THEME_NAME-theme ._md-thumb-text {  color: '{{accent-contrast}}'; }md-slider.md-THEME_NAME-theme.md-warn ._md-focus-ring {  background-color: '{{warn-200-0.38}}'; }md-slider.md-THEME_NAME-theme.md-warn ._md-track._md-track-fill {  background-color: '{{warn-color}}'; }md-slider.md-THEME_NAME-theme.md-warn ._md-thumb:after {  border-color: '{{warn-color}}';  background-color: '{{warn-color}}'; }md-slider.md-THEME_NAME-theme.md-warn ._md-sign {  background-color: '{{warn-color}}'; }  md-slider.md-THEME_NAME-theme.md-warn ._md-sign:after {    border-top-color: '{{warn-color}}'; }md-slider.md-THEME_NAME-theme.md-warn[md-vertical] ._md-sign:after {  border-top-color: transparent;  border-left-color: '{{warn-color}}'; }md-slider.md-THEME_NAME-theme.md-warn ._md-thumb-text {  color: '{{warn-contrast}}'; }md-slider.md-THEME_NAME-theme.md-primary ._md-focus-ring {  background-color: '{{primary-200-0.38}}'; }md-slider.md-THEME_NAME-theme.md-primary ._md-track._md-track-fill {  background-color: '{{primary-color}}'; }md-slider.md-THEME_NAME-theme.md-primary ._md-thumb:after {  border-color: '{{primary-color}}';  background-color: '{{primary-color}}'; }md-slider.md-THEME_NAME-theme.md-primary ._md-sign {  background-color: '{{primary-color}}'; }  md-slider.md-THEME_NAME-theme.md-primary ._md-sign:after {    border-top-color: '{{primary-color}}'; }md-slider.md-THEME_NAME-theme.md-primary[md-vertical] ._md-sign:after {  border-top-color: transparent;  border-left-color: '{{primary-color}}'; }md-slider.md-THEME_NAME-theme.md-primary ._md-thumb-text {  color: '{{primary-contrast}}'; }md-slider.md-THEME_NAME-theme[disabled] ._md-thumb:after {  border-color: transparent; }md-slider.md-THEME_NAME-theme[disabled]:not(._md-min) ._md-thumb:after, md-slider.md-THEME_NAME-theme[disabled][md-discrete] ._md-thumb:after {  background-color: '{{foreground-3}}';  border-color: transparent; }md-slider.md-THEME_NAME-theme[disabled][readonly] ._md-sign {  background-color: '{{background-400}}'; }  md-slider.md-THEME_NAME-theme[disabled][readonly] ._md-sign:after {    border-top-color: '{{background-400}}'; }md-slider.md-THEME_NAME-theme[disabled][readonly][md-vertical] ._md-sign:after {  border-top-color: transparent;  border-left-color: '{{background-400}}'; }md-slider.md-THEME_NAME-theme[disabled][readonly] ._md-disabled-thumb {  border-color: transparent;  background-color: transparent; }md-slider-container[disabled] > *:first-child:not(md-slider),md-slider-container[disabled] > *:last-child:not(md-slider) {  color: '{{foreground-3}}'; }.md-subheader.md-THEME_NAME-theme {  color: '{{ foreground-2-0.23 }}';  background-color: '{{background-default}}'; }  .md-subheader.md-THEME_NAME-theme.md-primary {    color: '{{primary-color}}'; }  .md-subheader.md-THEME_NAME-theme.md-accent {    color: '{{accent-color}}'; }  .md-subheader.md-THEME_NAME-theme.md-warn {    color: '{{warn-color}}'; }md-menu-content.md-THEME_NAME-theme {  background-color: '{{background-A100}}'; }  md-menu-content.md-THEME_NAME-theme md-menu-item {    color: '{{background-A200-0.87}}'; }    md-menu-content.md-THEME_NAME-theme md-menu-item md-icon {      color: '{{background-A200-0.54}}'; }    md-menu-content.md-THEME_NAME-theme md-menu-item .md-button[disabled] {      color: '{{background-A200-0.25}}'; }      md-menu-content.md-THEME_NAME-theme md-menu-item .md-button[disabled] md-icon {        color: '{{background-A200-0.25}}'; }  md-menu-content.md-THEME_NAME-theme md-menu-divider {    background-color: '{{background-A200-0.11}}'; }md-menu-bar.md-THEME_NAME-theme > button.md-button {  color: '{{foreground-2}}';  border-radius: 2px; }md-menu-bar.md-THEME_NAME-theme md-menu._md-open > button, md-menu-bar.md-THEME_NAME-theme md-menu > button:focus {  outline: none;  background: '{{background-200}}'; }md-menu-bar.md-THEME_NAME-theme._md-open:not(._md-keyboard-mode) md-menu:hover > button {  background-color: '{{ background-500-0.2}}'; }md-menu-bar.md-THEME_NAME-theme:not(._md-keyboard-mode):not(._md-open) md-menu button:hover,md-menu-bar.md-THEME_NAME-theme:not(._md-keyboard-mode):not(._md-open) md-menu button:focus {  background: transparent; }md-menu-content.md-THEME_NAME-theme .md-menu > .md-button:after {  color: '{{background-A200-0.54}}'; }md-menu-content.md-THEME_NAME-theme .md-menu._md-open > .md-button {  background-color: '{{ background-500-0.2}}'; }md-toolbar.md-THEME_NAME-theme.md-menu-toolbar {  background-color: '{{background-A100}}';  color: '{{background-A200}}'; }  md-toolbar.md-THEME_NAME-theme.md-menu-toolbar md-toolbar-filler {    background-color: '{{primary-color}}';    color: '{{background-A100-0.87}}'; }    md-toolbar.md-THEME_NAME-theme.md-menu-toolbar md-toolbar-filler md-icon {      color: '{{background-A100-0.87}}'; }md-tabs.md-THEME_NAME-theme md-tabs-wrapper {  background-color: transparent;  border-color: '{{foreground-4}}'; }md-tabs.md-THEME_NAME-theme .md-paginator md-icon {  color: '{{primary-color}}'; }md-tabs.md-THEME_NAME-theme md-ink-bar {  color: '{{accent-color}}';  background: '{{accent-color}}'; }md-tabs.md-THEME_NAME-theme .md-tab {  color: '{{foreground-2}}'; }  md-tabs.md-THEME_NAME-theme .md-tab[disabled], md-tabs.md-THEME_NAME-theme .md-tab[disabled] md-icon {    color: '{{foreground-3}}'; }  md-tabs.md-THEME_NAME-theme .md-tab.md-active, md-tabs.md-THEME_NAME-theme .md-tab.md-active md-icon, md-tabs.md-THEME_NAME-theme .md-tab.md-focused, md-tabs.md-THEME_NAME-theme .md-tab.md-focused md-icon {    color: '{{primary-color}}'; }  md-tabs.md-THEME_NAME-theme .md-tab.md-focused {    background: '{{primary-color-0.1}}'; }  md-tabs.md-THEME_NAME-theme .md-tab .md-ripple-container {    color: '{{accent-A100}}'; }md-tabs.md-THEME_NAME-theme.md-accent > md-tabs-wrapper {  background-color: '{{accent-color}}'; }  md-tabs.md-THEME_NAME-theme.md-accent > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]) {    color: '{{accent-A100}}'; }    md-tabs.md-THEME_NAME-theme.md-accent > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-active, md-tabs.md-THEME_NAME-theme.md-accent > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-active md-icon, md-tabs.md-THEME_NAME-theme.md-accent > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-focused, md-tabs.md-THEME_NAME-theme.md-accent > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-focused md-icon {      color: '{{accent-contrast}}'; }    md-tabs.md-THEME_NAME-theme.md-accent > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-focused {      background: '{{accent-contrast-0.1}}'; }  md-tabs.md-THEME_NAME-theme.md-accent > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-ink-bar {    color: '{{primary-600-1}}';    background: '{{primary-600-1}}'; }md-tabs.md-THEME_NAME-theme.md-primary > md-tabs-wrapper {  background-color: '{{primary-color}}'; }  md-tabs.md-THEME_NAME-theme.md-primary > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]) {    color: '{{primary-100}}'; }    md-tabs.md-THEME_NAME-theme.md-primary > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-active, md-tabs.md-THEME_NAME-theme.md-primary > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-active md-icon, md-tabs.md-THEME_NAME-theme.md-primary > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-focused, md-tabs.md-THEME_NAME-theme.md-primary > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-focused md-icon {      color: '{{primary-contrast}}'; }    md-tabs.md-THEME_NAME-theme.md-primary > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-focused {      background: '{{primary-contrast-0.1}}'; }md-tabs.md-THEME_NAME-theme.md-warn > md-tabs-wrapper {  background-color: '{{warn-color}}'; }  md-tabs.md-THEME_NAME-theme.md-warn > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]) {    color: '{{warn-100}}'; }    md-tabs.md-THEME_NAME-theme.md-warn > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-active, md-tabs.md-THEME_NAME-theme.md-warn > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-active md-icon, md-tabs.md-THEME_NAME-theme.md-warn > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-focused, md-tabs.md-THEME_NAME-theme.md-warn > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-focused md-icon {      color: '{{warn-contrast}}'; }    md-tabs.md-THEME_NAME-theme.md-warn > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-focused {      background: '{{warn-contrast-0.1}}'; }md-toolbar > md-tabs.md-THEME_NAME-theme > md-tabs-wrapper {  background-color: '{{primary-color}}'; }  md-toolbar > md-tabs.md-THEME_NAME-theme > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]) {    color: '{{primary-100}}'; }    md-toolbar > md-tabs.md-THEME_NAME-theme > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-active, md-toolbar > md-tabs.md-THEME_NAME-theme > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-active md-icon, md-toolbar > md-tabs.md-THEME_NAME-theme > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-focused, md-toolbar > md-tabs.md-THEME_NAME-theme > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-focused md-icon {      color: '{{primary-contrast}}'; }    md-toolbar > md-tabs.md-THEME_NAME-theme > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-focused {      background: '{{primary-contrast-0.1}}'; }md-toolbar.md-accent > md-tabs.md-THEME_NAME-theme > md-tabs-wrapper {  background-color: '{{accent-color}}'; }  md-toolbar.md-accent > md-tabs.md-THEME_NAME-theme > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]) {    color: '{{accent-A100}}'; }    md-toolbar.md-accent > md-tabs.md-THEME_NAME-theme > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-active, md-toolbar.md-accent > md-tabs.md-THEME_NAME-theme > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-active md-icon, md-toolbar.md-accent > md-tabs.md-THEME_NAME-theme > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-focused, md-toolbar.md-accent > md-tabs.md-THEME_NAME-theme > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-focused md-icon {      color: '{{accent-contrast}}'; }    md-toolbar.md-accent > md-tabs.md-THEME_NAME-theme > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-focused {      background: '{{accent-contrast-0.1}}'; }  md-toolbar.md-accent > md-tabs.md-THEME_NAME-theme > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-ink-bar {    color: '{{primary-600-1}}';    background: '{{primary-600-1}}'; }md-toolbar.md-warn > md-tabs.md-THEME_NAME-theme > md-tabs-wrapper {  background-color: '{{warn-color}}'; }  md-toolbar.md-warn > md-tabs.md-THEME_NAME-theme > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]) {    color: '{{warn-100}}'; }    md-toolbar.md-warn > md-tabs.md-THEME_NAME-theme > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-active, md-toolbar.md-warn > md-tabs.md-THEME_NAME-theme > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-active md-icon, md-toolbar.md-warn > md-tabs.md-THEME_NAME-theme > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-focused, md-toolbar.md-warn > md-tabs.md-THEME_NAME-theme > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-focused md-icon {      color: '{{warn-contrast}}'; }    md-toolbar.md-warn > md-tabs.md-THEME_NAME-theme > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-focused {      background: '{{warn-contrast-0.1}}'; }md-toast.md-THEME_NAME-theme .md-toast-content {  background-color: #323232;  color: '{{background-50}}'; }  md-toast.md-THEME_NAME-theme .md-toast-content .md-button {    color: '{{background-50}}'; }    md-toast.md-THEME_NAME-theme .md-toast-content .md-button.md-highlight {      color: '{{accent-color}}'; }      md-toast.md-THEME_NAME-theme .md-toast-content .md-button.md-highlight.md-primary {        color: '{{primary-color}}'; }      md-toast.md-THEME_NAME-theme .md-toast-content .md-button.md-highlight.md-warn {        color: '{{warn-color}}'; }md-toolbar.md-THEME_NAME-theme:not(.md-menu-toolbar) {  background-color: '{{primary-color}}';  color: '{{primary-contrast}}'; }  md-toolbar.md-THEME_NAME-theme:not(.md-menu-toolbar) md-icon {    color: '{{primary-contrast}}';    fill: '{{primary-contrast}}'; }  md-toolbar.md-THEME_NAME-theme:not(.md-menu-toolbar) .md-button[disabled] md-icon {    color: '{{primary-contrast-0.26}}';    fill: '{{primary-contrast-0.26}}'; }  md-toolbar.md-THEME_NAME-theme:not(.md-menu-toolbar).md-accent {    background-color: '{{accent-color}}';    color: '{{accent-contrast}}'; }    md-toolbar.md-THEME_NAME-theme:not(.md-menu-toolbar).md-accent .md-ink-ripple {      color: '{{accent-contrast}}'; }    md-toolbar.md-THEME_NAME-theme:not(.md-menu-toolbar).md-accent md-icon {      color: '{{accent-contrast}}';      fill: '{{accent-contrast}}'; }    md-toolbar.md-THEME_NAME-theme:not(.md-menu-toolbar).md-accent .md-button[disabled] md-icon {      color: '{{accent-contrast-0.26}}';      fill: '{{accent-contrast-0.26}}'; }  md-toolbar.md-THEME_NAME-theme:not(.md-menu-toolbar).md-warn {    background-color: '{{warn-color}}';    color: '{{warn-contrast}}'; }md-switch.md-THEME_NAME-theme .md-ink-ripple {  color: '{{background-500}}'; }md-switch.md-THEME_NAME-theme ._md-thumb {  background-color: '{{background-50}}'; }md-switch.md-THEME_NAME-theme ._md-bar {  background-color: '{{background-500}}'; }md-switch.md-THEME_NAME-theme.md-checked .md-ink-ripple {  color: '{{accent-color}}'; }md-switch.md-THEME_NAME-theme.md-checked ._md-thumb {  background-color: '{{accent-color}}'; }md-switch.md-THEME_NAME-theme.md-checked ._md-bar {  background-color: '{{accent-color-0.5}}'; }md-switch.md-THEME_NAME-theme.md-checked.md-focused ._md-thumb:before {  background-color: '{{accent-color-0.26}}'; }md-switch.md-THEME_NAME-theme.md-checked.md-primary .md-ink-ripple {  color: '{{primary-color}}'; }md-switch.md-THEME_NAME-theme.md-checked.md-primary ._md-thumb {  background-color: '{{primary-color}}'; }md-switch.md-THEME_NAME-theme.md-checked.md-primary ._md-bar {  background-color: '{{primary-color-0.5}}'; }md-switch.md-THEME_NAME-theme.md-checked.md-primary.md-focused ._md-thumb:before {  background-color: '{{primary-color-0.26}}'; }md-switch.md-THEME_NAME-theme.md-checked.md-warn .md-ink-ripple {  color: '{{warn-color}}'; }md-switch.md-THEME_NAME-theme.md-checked.md-warn ._md-thumb {  background-color: '{{warn-color}}'; }md-switch.md-THEME_NAME-theme.md-checked.md-warn ._md-bar {  background-color: '{{warn-color-0.5}}'; }md-switch.md-THEME_NAME-theme.md-checked.md-warn.md-focused ._md-thumb:before {  background-color: '{{warn-color-0.26}}'; }md-switch.md-THEME_NAME-theme[disabled] ._md-thumb {  background-color: '{{background-400}}'; }md-switch.md-THEME_NAME-theme[disabled] ._md-bar {  background-color: '{{foreground-4}}'; }md-tooltip.md-THEME_NAME-theme {  color: '{{background-A100}}'; }  md-tooltip.md-THEME_NAME-theme ._md-content {    background-color: '{{foreground-2}}'; }"); 
+angular.module("material.core").constant("$MD_THEME_CSS", "/*  Only used with Theme processes */html.md-THEME_NAME-theme, body.md-THEME_NAME-theme {  color: '{{foreground-1}}';  background-color: '{{background-color}}'; }md-autocomplete.md-THEME_NAME-theme {  background: '{{background-A100}}'; }  md-autocomplete.md-THEME_NAME-theme[disabled]:not([md-floating-label]) {    background: '{{background-100}}'; }  md-autocomplete.md-THEME_NAME-theme button md-icon path {    fill: '{{background-600}}'; }  md-autocomplete.md-THEME_NAME-theme button:after {    background: '{{background-600-0.3}}'; }.md-autocomplete-suggestions-container.md-THEME_NAME-theme {  background: '{{background-A100}}'; }  .md-autocomplete-suggestions-container.md-THEME_NAME-theme li {    color: '{{background-900}}'; }    .md-autocomplete-suggestions-container.md-THEME_NAME-theme li .highlight {      color: '{{background-600}}'; }    .md-autocomplete-suggestions-container.md-THEME_NAME-theme li:hover, .md-autocomplete-suggestions-container.md-THEME_NAME-theme li.selected {      background: '{{background-200}}'; }.md-button.md-THEME_NAME-theme:not([disabled]):hover {  background-color: '{{background-500-0.2}}'; }.md-button.md-THEME_NAME-theme:not([disabled]).md-focused {  background-color: '{{background-500-0.2}}'; }.md-button.md-THEME_NAME-theme:not([disabled]).md-icon-button:hover {  background-color: transparent; }.md-button.md-THEME_NAME-theme.md-fab {  background-color: '{{accent-color}}';  color: '{{accent-contrast}}'; }  .md-button.md-THEME_NAME-theme.md-fab md-icon {    color: '{{accent-contrast}}'; }  .md-button.md-THEME_NAME-theme.md-fab:not([disabled]):hover {    background-color: '{{accent-A700}}'; }  .md-button.md-THEME_NAME-theme.md-fab:not([disabled]).md-focused {    background-color: '{{accent-A700}}'; }.md-button.md-THEME_NAME-theme.md-primary {  color: '{{primary-color}}'; }  .md-button.md-THEME_NAME-theme.md-primary.md-raised, .md-button.md-THEME_NAME-theme.md-primary.md-fab {    color: '{{primary-contrast}}';    background-color: '{{primary-color}}'; }    .md-button.md-THEME_NAME-theme.md-primary.md-raised:not([disabled]) md-icon, .md-button.md-THEME_NAME-theme.md-primary.md-fab:not([disabled]) md-icon {      color: '{{primary-contrast}}'; }    .md-button.md-THEME_NAME-theme.md-primary.md-raised:not([disabled]):hover, .md-button.md-THEME_NAME-theme.md-primary.md-fab:not([disabled]):hover {      background-color: '{{primary-600}}'; }    .md-button.md-THEME_NAME-theme.md-primary.md-raised:not([disabled]).md-focused, .md-button.md-THEME_NAME-theme.md-primary.md-fab:not([disabled]).md-focused {      background-color: '{{primary-600}}'; }  .md-button.md-THEME_NAME-theme.md-primary:not([disabled]) md-icon {    color: '{{primary-color}}'; }.md-button.md-THEME_NAME-theme.md-fab {  background-color: '{{accent-color}}';  color: '{{accent-contrast}}'; }  .md-button.md-THEME_NAME-theme.md-fab:not([disabled]) .md-icon {    color: '{{accent-contrast}}'; }  .md-button.md-THEME_NAME-theme.md-fab:not([disabled]):hover {    background-color: '{{accent-A700}}'; }  .md-button.md-THEME_NAME-theme.md-fab:not([disabled]).md-focused {    background-color: '{{accent-A700}}'; }.md-button.md-THEME_NAME-theme.md-raised {  color: '{{background-900}}';  background-color: '{{background-50}}'; }  .md-button.md-THEME_NAME-theme.md-raised:not([disabled]) md-icon {    color: '{{background-900}}'; }  .md-button.md-THEME_NAME-theme.md-raised:not([disabled]):hover {    background-color: '{{background-50}}'; }  .md-button.md-THEME_NAME-theme.md-raised:not([disabled]).md-focused {    background-color: '{{background-200}}'; }.md-button.md-THEME_NAME-theme.md-warn {  color: '{{warn-color}}'; }  .md-button.md-THEME_NAME-theme.md-warn.md-raised, .md-button.md-THEME_NAME-theme.md-warn.md-fab {    color: '{{warn-contrast}}';    background-color: '{{warn-color}}'; }    .md-button.md-THEME_NAME-theme.md-warn.md-raised:not([disabled]) md-icon, .md-button.md-THEME_NAME-theme.md-warn.md-fab:not([disabled]) md-icon {      color: '{{warn-contrast}}'; }    .md-button.md-THEME_NAME-theme.md-warn.md-raised:not([disabled]):hover, .md-button.md-THEME_NAME-theme.md-warn.md-fab:not([disabled]):hover {      background-color: '{{warn-600}}'; }    .md-button.md-THEME_NAME-theme.md-warn.md-raised:not([disabled]).md-focused, .md-button.md-THEME_NAME-theme.md-warn.md-fab:not([disabled]).md-focused {      background-color: '{{warn-600}}'; }  .md-button.md-THEME_NAME-theme.md-warn:not([disabled]) md-icon {    color: '{{warn-color}}'; }.md-button.md-THEME_NAME-theme.md-accent {  color: '{{accent-color}}'; }  .md-button.md-THEME_NAME-theme.md-accent.md-raised, .md-button.md-THEME_NAME-theme.md-accent.md-fab {    color: '{{accent-contrast}}';    background-color: '{{accent-color}}'; }    .md-button.md-THEME_NAME-theme.md-accent.md-raised:not([disabled]) md-icon, .md-button.md-THEME_NAME-theme.md-accent.md-fab:not([disabled]) md-icon {      color: '{{accent-contrast}}'; }    .md-button.md-THEME_NAME-theme.md-accent.md-raised:not([disabled]):hover, .md-button.md-THEME_NAME-theme.md-accent.md-fab:not([disabled]):hover {      background-color: '{{accent-A700}}'; }    .md-button.md-THEME_NAME-theme.md-accent.md-raised:not([disabled]).md-focused, .md-button.md-THEME_NAME-theme.md-accent.md-fab:not([disabled]).md-focused {      background-color: '{{accent-A700}}'; }  .md-button.md-THEME_NAME-theme.md-accent:not([disabled]) md-icon {    color: '{{accent-color}}'; }.md-button.md-THEME_NAME-theme[disabled], .md-button.md-THEME_NAME-theme.md-raised[disabled], .md-button.md-THEME_NAME-theme.md-fab[disabled], .md-button.md-THEME_NAME-theme.md-accent[disabled], .md-button.md-THEME_NAME-theme.md-warn[disabled] {  color: '{{foreground-3}}';  cursor: default; }  .md-button.md-THEME_NAME-theme[disabled] md-icon, .md-button.md-THEME_NAME-theme.md-raised[disabled] md-icon, .md-button.md-THEME_NAME-theme.md-fab[disabled] md-icon, .md-button.md-THEME_NAME-theme.md-accent[disabled] md-icon, .md-button.md-THEME_NAME-theme.md-warn[disabled] md-icon {    color: '{{foreground-3}}'; }.md-button.md-THEME_NAME-theme.md-raised[disabled], .md-button.md-THEME_NAME-theme.md-fab[disabled] {  background-color: '{{foreground-4}}'; }.md-button.md-THEME_NAME-theme[disabled] {  background-color: transparent; }._md a.md-THEME_NAME-theme:not(.md-button).md-primary {  color: '{{primary-color}}'; }  ._md a.md-THEME_NAME-theme:not(.md-button).md-primary:hover {    color: '{{primary-700}}'; }._md a.md-THEME_NAME-theme:not(.md-button).md-accent {  color: '{{accent-color}}'; }  ._md a.md-THEME_NAME-theme:not(.md-button).md-accent:hover {    color: '{{accent-700}}'; }._md a.md-THEME_NAME-theme:not(.md-button).md-accent {  color: '{{accent-color}}'; }  ._md a.md-THEME_NAME-theme:not(.md-button).md-accent:hover {    color: '{{accent-A700}}'; }._md a.md-THEME_NAME-theme:not(.md-button).md-warn {  color: '{{warn-color}}'; }  ._md a.md-THEME_NAME-theme:not(.md-button).md-warn:hover {    color: '{{warn-700}}'; }md-card.md-THEME_NAME-theme {  color: '{{foreground-1}}';  background-color: '{{background-hue-1}}';  border-radius: 2px; }  md-card.md-THEME_NAME-theme .md-card-image {    border-radius: 2px 2px 0 0; }  md-card.md-THEME_NAME-theme md-card-header md-card-avatar md-icon {    color: '{{background-color}}';    background-color: '{{foreground-3}}'; }  md-card.md-THEME_NAME-theme md-card-header md-card-header-text .md-subhead {    color: '{{foreground-2}}'; }  md-card.md-THEME_NAME-theme md-card-title md-card-title-text:not(:only-child) .md-subhead {    color: '{{foreground-2}}'; }md-checkbox.md-THEME_NAME-theme .md-ripple {  color: '{{accent-A700}}'; }md-checkbox.md-THEME_NAME-theme.md-checked .md-ripple {  color: '{{background-600}}'; }md-checkbox.md-THEME_NAME-theme.md-checked.md-focused ._md-container:before {  background-color: '{{accent-color-0.26}}'; }md-checkbox.md-THEME_NAME-theme .md-ink-ripple {  color: '{{foreground-2}}'; }md-checkbox.md-THEME_NAME-theme.md-checked .md-ink-ripple {  color: '{{accent-color-0.87}}'; }md-checkbox.md-THEME_NAME-theme ._md-icon {  border-color: '{{foreground-2}}'; }md-checkbox.md-THEME_NAME-theme.md-checked ._md-icon {  background-color: '{{accent-color-0.87}}'; }md-checkbox.md-THEME_NAME-theme.md-checked ._md-icon:after {  border-color: '{{accent-contrast-0.87}}'; }md-checkbox.md-THEME_NAME-theme:not([disabled]).md-primary .md-ripple {  color: '{{primary-600}}'; }md-checkbox.md-THEME_NAME-theme:not([disabled]).md-primary.md-checked .md-ripple {  color: '{{background-600}}'; }md-checkbox.md-THEME_NAME-theme:not([disabled]).md-primary .md-ink-ripple {  color: '{{foreground-2}}'; }md-checkbox.md-THEME_NAME-theme:not([disabled]).md-primary.md-checked .md-ink-ripple {  color: '{{primary-color-0.87}}'; }md-checkbox.md-THEME_NAME-theme:not([disabled]).md-primary ._md-icon {  border-color: '{{foreground-2}}'; }md-checkbox.md-THEME_NAME-theme:not([disabled]).md-primary.md-checked ._md-icon {  background-color: '{{primary-color-0.87}}'; }md-checkbox.md-THEME_NAME-theme:not([disabled]).md-primary.md-checked.md-focused ._md-container:before {  background-color: '{{primary-color-0.26}}'; }md-checkbox.md-THEME_NAME-theme:not([disabled]).md-primary.md-checked ._md-icon:after {  border-color: '{{primary-contrast-0.87}}'; }md-checkbox.md-THEME_NAME-theme:not([disabled]).md-primary .md-indeterminate[disabled] ._md-container {  color: '{{foreground-3}}'; }md-checkbox.md-THEME_NAME-theme:not([disabled]).md-warn .md-ripple {  color: '{{warn-600}}'; }md-checkbox.md-THEME_NAME-theme:not([disabled]).md-warn .md-ink-ripple {  color: '{{foreground-2}}'; }md-checkbox.md-THEME_NAME-theme:not([disabled]).md-warn.md-checked .md-ink-ripple {  color: '{{warn-color-0.87}}'; }md-checkbox.md-THEME_NAME-theme:not([disabled]).md-warn ._md-icon {  border-color: '{{foreground-2}}'; }md-checkbox.md-THEME_NAME-theme:not([disabled]).md-warn.md-checked ._md-icon {  background-color: '{{warn-color-0.87}}'; }md-checkbox.md-THEME_NAME-theme:not([disabled]).md-warn.md-checked.md-focused:not([disabled]) ._md-container:before {  background-color: '{{warn-color-0.26}}'; }md-checkbox.md-THEME_NAME-theme:not([disabled]).md-warn.md-checked ._md-icon:after {  border-color: '{{background-200}}'; }md-checkbox.md-THEME_NAME-theme[disabled] ._md-icon {  border-color: '{{foreground-3}}'; }md-checkbox.md-THEME_NAME-theme[disabled].md-checked ._md-icon {  background-color: '{{foreground-3}}'; }md-checkbox.md-THEME_NAME-theme[disabled].md-checked ._md-icon:after {  border-color: '{{background-200}}'; }md-checkbox.md-THEME_NAME-theme[disabled] ._md-label {  color: '{{foreground-3}}'; }md-chips.md-THEME_NAME-theme .md-chips {  box-shadow: 0 1px '{{foreground-4}}'; }  md-chips.md-THEME_NAME-theme .md-chips.md-focused {    box-shadow: 0 2px '{{primary-color}}'; }  md-chips.md-THEME_NAME-theme .md-chips ._md-chip-input-container input {    color: '{{foreground-1}}'; }    md-chips.md-THEME_NAME-theme .md-chips ._md-chip-input-container input::-webkit-input-placeholder {      color: '{{foreground-3}}'; }    md-chips.md-THEME_NAME-theme .md-chips ._md-chip-input-container input:-moz-placeholder {      color: '{{foreground-3}}'; }    md-chips.md-THEME_NAME-theme .md-chips ._md-chip-input-container input::-moz-placeholder {      color: '{{foreground-3}}'; }    md-chips.md-THEME_NAME-theme .md-chips ._md-chip-input-container input:-ms-input-placeholder {      color: '{{foreground-3}}'; }    md-chips.md-THEME_NAME-theme .md-chips ._md-chip-input-container input::-webkit-input-placeholder {      color: '{{foreground-3}}'; }md-chips.md-THEME_NAME-theme md-chip {  background: '{{background-300}}';  color: '{{background-800}}'; }  md-chips.md-THEME_NAME-theme md-chip md-icon {    color: '{{background-700}}'; }  md-chips.md-THEME_NAME-theme md-chip.md-focused {    background: '{{primary-color}}';    color: '{{primary-contrast}}'; }    md-chips.md-THEME_NAME-theme md-chip.md-focused md-icon {      color: '{{primary-contrast}}'; }  md-chips.md-THEME_NAME-theme md-chip._md-chip-editing {    background: transparent;    color: '{{background-800}}'; }md-chips.md-THEME_NAME-theme md-chip-remove .md-button md-icon path {  fill: '{{background-500}}'; }.md-contact-suggestion span.md-contact-email {  color: '{{background-400}}'; }md-content.md-THEME_NAME-theme {  color: '{{foreground-1}}';  background-color: '{{background-default}}'; }md-dialog.md-THEME_NAME-theme {  border-radius: 4px;  background-color: '{{background-hue-1}}'; }  md-dialog.md-THEME_NAME-theme.md-content-overflow .md-actions, md-dialog.md-THEME_NAME-theme.md-content-overflow md-dialog-actions {    border-top-color: '{{foreground-4}}'; }md-divider.md-THEME_NAME-theme {  border-top-color: '{{foreground-4}}'; }.layout-row > md-divider.md-THEME_NAME-theme,.layout-xs-row > md-divider.md-THEME_NAME-theme, .layout-gt-xs-row > md-divider.md-THEME_NAME-theme,.layout-sm-row > md-divider.md-THEME_NAME-theme, .layout-gt-sm-row > md-divider.md-THEME_NAME-theme,.layout-md-row > md-divider.md-THEME_NAME-theme, .layout-gt-md-row > md-divider.md-THEME_NAME-theme,.layout-lg-row > md-divider.md-THEME_NAME-theme, .layout-gt-lg-row > md-divider.md-THEME_NAME-theme,.layout-xl-row > md-divider.md-THEME_NAME-theme {  border-right-color: '{{foreground-4}}'; }/** Theme styles for mdCalendar. */.md-calendar.md-THEME_NAME-theme {  background: '{{background-A100}}';  color: '{{background-A200-0.87}}'; }  .md-calendar.md-THEME_NAME-theme tr:last-child td {    border-bottom-color: '{{background-200}}'; }.md-THEME_NAME-theme .md-calendar-day-header {  background: '{{background-300}}';  color: '{{background-A200-0.87}}'; }.md-THEME_NAME-theme .md-calendar-date.md-calendar-date-today .md-calendar-date-selection-indicator {  border: 1px solid '{{primary-500}}'; }.md-THEME_NAME-theme .md-calendar-date.md-calendar-date-today.md-calendar-date-disabled {  color: '{{primary-500-0.6}}'; }.md-THEME_NAME-theme .md-calendar-date.md-focus .md-calendar-date-selection-indicator {  background: '{{background-hue-1}}'; }.md-THEME_NAME-theme .md-calendar-date-selection-indicator:hover {  background: '{{background-300}}'; }.md-THEME_NAME-theme .md-calendar-date.md-calendar-selected-date .md-calendar-date-selection-indicator,.md-THEME_NAME-theme .md-calendar-date.md-focus.md-calendar-selected-date .md-calendar-date-selection-indicator {  background: '{{primary-500}}';  color: '{{primary-500-contrast}}';  border-color: transparent; }.md-THEME_NAME-theme .md-calendar-date-disabled,.md-THEME_NAME-theme .md-calendar-month-label-disabled {  color: '{{foreground-3}}'; }/** Theme styles for mdDatepicker. */.md-THEME_NAME-theme .md-datepicker-input {  color: '{{foreground-1}}'; }  .md-THEME_NAME-theme .md-datepicker-input::-webkit-input-placeholder {    color: '{{foreground-3}}'; }  .md-THEME_NAME-theme .md-datepicker-input:-moz-placeholder {    color: '{{foreground-3}}'; }  .md-THEME_NAME-theme .md-datepicker-input::-moz-placeholder {    color: '{{foreground-3}}'; }  .md-THEME_NAME-theme .md-datepicker-input:-ms-input-placeholder {    color: '{{foreground-3}}'; }  .md-THEME_NAME-theme .md-datepicker-input::-webkit-input-placeholder {    color: '{{foreground-3}}'; }.md-THEME_NAME-theme .md-datepicker-input-container {  border-bottom-color: '{{background-300}}'; }  .md-THEME_NAME-theme .md-datepicker-input-container.md-datepicker-focused {    border-bottom-color: '{{primary-500}}'; }  .md-THEME_NAME-theme .md-datepicker-input-container.md-datepicker-invalid {    border-bottom-color: '{{warn-A700}}'; }.md-THEME_NAME-theme .md-datepicker-calendar-pane {  border-color: '{{background-hue-1}}'; }.md-THEME_NAME-theme .md-datepicker-triangle-button .md-datepicker-expand-triangle {  border-top-color: '{{foreground-3}}'; }.md-THEME_NAME-theme .md-datepicker-triangle-button:hover .md-datepicker-expand-triangle {  border-top-color: '{{foreground-2}}'; }.md-THEME_NAME-theme .md-datepicker-open .md-datepicker-calendar-icon {  fill: '{{primary-500}}'; }.md-THEME_NAME-theme .md-datepicker-open .md-datepicker-input-container,.md-THEME_NAME-theme .md-datepicker-input-mask-opaque {  background: '{{background-hue-1}}'; }.md-THEME_NAME-theme .md-datepicker-calendar {  background: '{{background-A100}}'; }md-icon.md-THEME_NAME-theme {  color: '{{foreground-2}}'; }  md-icon.md-THEME_NAME-theme.md-primary {    color: '{{primary-color}}'; }  md-icon.md-THEME_NAME-theme.md-accent {    color: '{{accent-color}}'; }  md-icon.md-THEME_NAME-theme.md-warn {    color: '{{warn-color}}'; }md-input-container.md-THEME_NAME-theme .md-input {  color: '{{foreground-1}}';  border-color: '{{foreground-4}}'; }  md-input-container.md-THEME_NAME-theme .md-input::-webkit-input-placeholder {    color: '{{foreground-3}}'; }  md-input-container.md-THEME_NAME-theme .md-input:-moz-placeholder {    color: '{{foreground-3}}'; }  md-input-container.md-THEME_NAME-theme .md-input::-moz-placeholder {    color: '{{foreground-3}}'; }  md-input-container.md-THEME_NAME-theme .md-input:-ms-input-placeholder {    color: '{{foreground-3}}'; }  md-input-container.md-THEME_NAME-theme .md-input::-webkit-input-placeholder {    color: '{{foreground-3}}'; }md-input-container.md-THEME_NAME-theme > md-icon {  color: '{{foreground-1}}'; }md-input-container.md-THEME_NAME-theme label,md-input-container.md-THEME_NAME-theme ._md-placeholder {  color: '{{foreground-3}}'; }md-input-container.md-THEME_NAME-theme label.md-required:after {  color: '{{warn-A700}}'; }md-input-container.md-THEME_NAME-theme:not(.md-input-focused):not(.md-input-invalid) label.md-required:after {  color: '{{foreground-2}}'; }md-input-container.md-THEME_NAME-theme .md-input-messages-animation, md-input-container.md-THEME_NAME-theme .md-input-message-animation {  color: '{{warn-A700}}'; }  md-input-container.md-THEME_NAME-theme .md-input-messages-animation .md-char-counter, md-input-container.md-THEME_NAME-theme .md-input-message-animation .md-char-counter {    color: '{{foreground-1}}'; }md-input-container.md-THEME_NAME-theme:not(.md-input-invalid).md-input-has-value label {  color: '{{foreground-2}}'; }md-input-container.md-THEME_NAME-theme:not(.md-input-invalid).md-input-focused .md-input {  border-color: '{{primary-color}}'; }md-input-container.md-THEME_NAME-theme:not(.md-input-invalid).md-input-focused label {  color: '{{primary-color}}'; }md-input-container.md-THEME_NAME-theme:not(.md-input-invalid).md-input-focused md-icon {  color: '{{primary-color}}'; }md-input-container.md-THEME_NAME-theme:not(.md-input-invalid).md-input-focused.md-accent .md-input {  border-color: '{{accent-color}}'; }md-input-container.md-THEME_NAME-theme:not(.md-input-invalid).md-input-focused.md-accent label {  color: '{{accent-color}}'; }md-input-container.md-THEME_NAME-theme:not(.md-input-invalid).md-input-focused.md-warn .md-input {  border-color: '{{warn-A700}}'; }md-input-container.md-THEME_NAME-theme:not(.md-input-invalid).md-input-focused.md-warn label {  color: '{{warn-A700}}'; }md-input-container.md-THEME_NAME-theme.md-input-invalid .md-input {  border-color: '{{warn-A700}}'; }md-input-container.md-THEME_NAME-theme.md-input-invalid label {  color: '{{warn-A700}}'; }md-input-container.md-THEME_NAME-theme.md-input-invalid .md-input-message-animation, md-input-container.md-THEME_NAME-theme.md-input-invalid .md-char-counter {  color: '{{warn-A700}}'; }md-input-container.md-THEME_NAME-theme .md-input[disabled],[disabled] md-input-container.md-THEME_NAME-theme .md-input {  border-bottom-color: transparent;  color: '{{foreground-3}}';  background-image: linear-gradient(to right, \"{{foreground-3}}\" 0%, \"{{foreground-3}}\" 33%, transparent 0%);  background-image: -ms-linear-gradient(left, transparent 0%, \"{{foreground-3}}\" 100%); }md-list.md-THEME_NAME-theme md-list-item.md-2-line .md-list-item-text h3, md-list.md-THEME_NAME-theme md-list-item.md-2-line .md-list-item-text h4,md-list.md-THEME_NAME-theme md-list-item.md-3-line .md-list-item-text h3,md-list.md-THEME_NAME-theme md-list-item.md-3-line .md-list-item-text h4 {  color: '{{foreground-1}}'; }md-list.md-THEME_NAME-theme md-list-item.md-2-line .md-list-item-text p,md-list.md-THEME_NAME-theme md-list-item.md-3-line .md-list-item-text p {  color: '{{foreground-2}}'; }md-list.md-THEME_NAME-theme ._md-proxy-focus.md-focused div._md-no-style {  background-color: '{{background-100}}'; }md-list.md-THEME_NAME-theme md-list-item .md-avatar-icon {  background-color: '{{foreground-3}}';  color: '{{background-color}}'; }md-list.md-THEME_NAME-theme md-list-item > md-icon {  color: '{{foreground-2}}'; }  md-list.md-THEME_NAME-theme md-list-item > md-icon.md-highlight {    color: '{{primary-color}}'; }    md-list.md-THEME_NAME-theme md-list-item > md-icon.md-highlight.md-accent {      color: '{{accent-color}}'; }md-menu-content.md-THEME_NAME-theme {  background-color: '{{background-A100}}'; }  md-menu-content.md-THEME_NAME-theme md-menu-item {    color: '{{background-A200-0.87}}'; }    md-menu-content.md-THEME_NAME-theme md-menu-item md-icon {      color: '{{background-A200-0.54}}'; }    md-menu-content.md-THEME_NAME-theme md-menu-item .md-button[disabled] {      color: '{{background-A200-0.25}}'; }      md-menu-content.md-THEME_NAME-theme md-menu-item .md-button[disabled] md-icon {        color: '{{background-A200-0.25}}'; }  md-menu-content.md-THEME_NAME-theme md-menu-divider {    background-color: '{{background-A200-0.11}}'; }md-menu-bar.md-THEME_NAME-theme > button.md-button {  color: '{{foreground-2}}';  border-radius: 2px; }md-menu-bar.md-THEME_NAME-theme md-menu._md-open > button, md-menu-bar.md-THEME_NAME-theme md-menu > button:focus {  outline: none;  background: '{{background-200}}'; }md-menu-bar.md-THEME_NAME-theme._md-open:not(._md-keyboard-mode) md-menu:hover > button {  background-color: '{{ background-500-0.2}}'; }md-menu-bar.md-THEME_NAME-theme:not(._md-keyboard-mode):not(._md-open) md-menu button:hover,md-menu-bar.md-THEME_NAME-theme:not(._md-keyboard-mode):not(._md-open) md-menu button:focus {  background: transparent; }md-menu-content.md-THEME_NAME-theme .md-menu > .md-button:after {  color: '{{background-A200-0.54}}'; }md-menu-content.md-THEME_NAME-theme .md-menu._md-open > .md-button {  background-color: '{{ background-500-0.2}}'; }md-toolbar.md-THEME_NAME-theme.md-menu-toolbar {  background-color: '{{background-A100}}';  color: '{{background-A200}}'; }  md-toolbar.md-THEME_NAME-theme.md-menu-toolbar md-toolbar-filler {    background-color: '{{primary-color}}';    color: '{{background-A100-0.87}}'; }    md-toolbar.md-THEME_NAME-theme.md-menu-toolbar md-toolbar-filler md-icon {      color: '{{background-A100-0.87}}'; }md-backdrop {  background-color: '{{background-900-0.0}}'; }  md-backdrop.md-opaque.md-THEME_NAME-theme {    background-color: '{{background-900-1.0}}'; }md-progress-linear.md-THEME_NAME-theme ._md-container {  background-color: '{{primary-100}}'; }md-progress-linear.md-THEME_NAME-theme ._md-bar {  background-color: '{{primary-color}}'; }md-progress-linear.md-THEME_NAME-theme.md-warn ._md-container {  background-color: '{{warn-100}}'; }md-progress-linear.md-THEME_NAME-theme.md-warn ._md-bar {  background-color: '{{warn-color}}'; }md-progress-linear.md-THEME_NAME-theme.md-accent ._md-container {  background-color: '{{accent-A100}}'; }md-progress-linear.md-THEME_NAME-theme.md-accent ._md-bar {  background-color: '{{accent-color}}'; }md-progress-linear.md-THEME_NAME-theme[md-mode=buffer].md-warn ._md-bar1 {  background-color: '{{warn-100}}'; }md-progress-linear.md-THEME_NAME-theme[md-mode=buffer].md-warn ._md-dashed:before {  background: radial-gradient(\"{{warn-100}}\" 0%, \"{{warn-100}}\" 16%, transparent 42%); }md-progress-linear.md-THEME_NAME-theme[md-mode=buffer].md-accent ._md-bar1 {  background-color: '{{accent-A100}}'; }md-progress-linear.md-THEME_NAME-theme[md-mode=buffer].md-accent ._md-dashed:before {  background: radial-gradient(\"{{accent-A100}}\" 0%, \"{{accent-A100}}\" 16%, transparent 42%); }md-radio-button.md-THEME_NAME-theme ._md-off {  border-color: '{{foreground-2}}'; }md-radio-button.md-THEME_NAME-theme ._md-on {  background-color: '{{accent-color-0.87}}'; }md-radio-button.md-THEME_NAME-theme.md-checked ._md-off {  border-color: '{{accent-color-0.87}}'; }md-radio-button.md-THEME_NAME-theme.md-checked .md-ink-ripple {  color: '{{accent-color-0.87}}'; }md-radio-button.md-THEME_NAME-theme ._md-container .md-ripple {  color: '{{accent-A700}}'; }md-radio-group.md-THEME_NAME-theme:not([disabled]) .md-primary ._md-on, md-radio-group.md-THEME_NAME-theme:not([disabled]).md-primary ._md-on,md-radio-button.md-THEME_NAME-theme:not([disabled]) .md-primary ._md-on,md-radio-button.md-THEME_NAME-theme:not([disabled]).md-primary ._md-on {  background-color: '{{primary-color-0.87}}'; }md-radio-group.md-THEME_NAME-theme:not([disabled]) .md-primary .md-checked ._md-off, md-radio-group.md-THEME_NAME-theme:not([disabled]) .md-primary.md-checked ._md-off, md-radio-group.md-THEME_NAME-theme:not([disabled]).md-primary .md-checked ._md-off, md-radio-group.md-THEME_NAME-theme:not([disabled]).md-primary.md-checked ._md-off,md-radio-button.md-THEME_NAME-theme:not([disabled]) .md-primary .md-checked ._md-off,md-radio-button.md-THEME_NAME-theme:not([disabled]) .md-primary.md-checked ._md-off,md-radio-button.md-THEME_NAME-theme:not([disabled]).md-primary .md-checked ._md-off,md-radio-button.md-THEME_NAME-theme:not([disabled]).md-primary.md-checked ._md-off {  border-color: '{{primary-color-0.87}}'; }md-radio-group.md-THEME_NAME-theme:not([disabled]) .md-primary .md-checked .md-ink-ripple, md-radio-group.md-THEME_NAME-theme:not([disabled]) .md-primary.md-checked .md-ink-ripple, md-radio-group.md-THEME_NAME-theme:not([disabled]).md-primary .md-checked .md-ink-ripple, md-radio-group.md-THEME_NAME-theme:not([disabled]).md-primary.md-checked .md-ink-ripple,md-radio-button.md-THEME_NAME-theme:not([disabled]) .md-primary .md-checked .md-ink-ripple,md-radio-button.md-THEME_NAME-theme:not([disabled]) .md-primary.md-checked .md-ink-ripple,md-radio-button.md-THEME_NAME-theme:not([disabled]).md-primary .md-checked .md-ink-ripple,md-radio-button.md-THEME_NAME-theme:not([disabled]).md-primary.md-checked .md-ink-ripple {  color: '{{primary-color-0.87}}'; }md-radio-group.md-THEME_NAME-theme:not([disabled]) .md-primary ._md-container .md-ripple, md-radio-group.md-THEME_NAME-theme:not([disabled]).md-primary ._md-container .md-ripple,md-radio-button.md-THEME_NAME-theme:not([disabled]) .md-primary ._md-container .md-ripple,md-radio-button.md-THEME_NAME-theme:not([disabled]).md-primary ._md-container .md-ripple {  color: '{{primary-600}}'; }md-radio-group.md-THEME_NAME-theme:not([disabled]) .md-warn ._md-on, md-radio-group.md-THEME_NAME-theme:not([disabled]).md-warn ._md-on,md-radio-button.md-THEME_NAME-theme:not([disabled]) .md-warn ._md-on,md-radio-button.md-THEME_NAME-theme:not([disabled]).md-warn ._md-on {  background-color: '{{warn-color-0.87}}'; }md-radio-group.md-THEME_NAME-theme:not([disabled]) .md-warn .md-checked ._md-off, md-radio-group.md-THEME_NAME-theme:not([disabled]) .md-warn.md-checked ._md-off, md-radio-group.md-THEME_NAME-theme:not([disabled]).md-warn .md-checked ._md-off, md-radio-group.md-THEME_NAME-theme:not([disabled]).md-warn.md-checked ._md-off,md-radio-button.md-THEME_NAME-theme:not([disabled]) .md-warn .md-checked ._md-off,md-radio-button.md-THEME_NAME-theme:not([disabled]) .md-warn.md-checked ._md-off,md-radio-button.md-THEME_NAME-theme:not([disabled]).md-warn .md-checked ._md-off,md-radio-button.md-THEME_NAME-theme:not([disabled]).md-warn.md-checked ._md-off {  border-color: '{{warn-color-0.87}}'; }md-radio-group.md-THEME_NAME-theme:not([disabled]) .md-warn .md-checked .md-ink-ripple, md-radio-group.md-THEME_NAME-theme:not([disabled]) .md-warn.md-checked .md-ink-ripple, md-radio-group.md-THEME_NAME-theme:not([disabled]).md-warn .md-checked .md-ink-ripple, md-radio-group.md-THEME_NAME-theme:not([disabled]).md-warn.md-checked .md-ink-ripple,md-radio-button.md-THEME_NAME-theme:not([disabled]) .md-warn .md-checked .md-ink-ripple,md-radio-button.md-THEME_NAME-theme:not([disabled]) .md-warn.md-checked .md-ink-ripple,md-radio-button.md-THEME_NAME-theme:not([disabled]).md-warn .md-checked .md-ink-ripple,md-radio-button.md-THEME_NAME-theme:not([disabled]).md-warn.md-checked .md-ink-ripple {  color: '{{warn-color-0.87}}'; }md-radio-group.md-THEME_NAME-theme:not([disabled]) .md-warn ._md-container .md-ripple, md-radio-group.md-THEME_NAME-theme:not([disabled]).md-warn ._md-container .md-ripple,md-radio-button.md-THEME_NAME-theme:not([disabled]) .md-warn ._md-container .md-ripple,md-radio-button.md-THEME_NAME-theme:not([disabled]).md-warn ._md-container .md-ripple {  color: '{{warn-600}}'; }md-radio-group.md-THEME_NAME-theme[disabled],md-radio-button.md-THEME_NAME-theme[disabled] {  color: '{{foreground-3}}'; }  md-radio-group.md-THEME_NAME-theme[disabled] ._md-container ._md-off,  md-radio-button.md-THEME_NAME-theme[disabled] ._md-container ._md-off {    border-color: '{{foreground-3}}'; }  md-radio-group.md-THEME_NAME-theme[disabled] ._md-container ._md-on,  md-radio-button.md-THEME_NAME-theme[disabled] ._md-container ._md-on {    border-color: '{{foreground-3}}'; }md-radio-group.md-THEME_NAME-theme .md-checked .md-ink-ripple {  color: '{{accent-color-0.26}}'; }md-radio-group.md-THEME_NAME-theme.md-primary .md-checked:not([disabled]) .md-ink-ripple, md-radio-group.md-THEME_NAME-theme .md-checked:not([disabled]).md-primary .md-ink-ripple {  color: '{{primary-color-0.26}}'; }md-radio-group.md-THEME_NAME-theme .md-checked.md-primary .md-ink-ripple {  color: '{{warn-color-0.26}}'; }md-radio-group.md-THEME_NAME-theme.md-focused:not(:empty) .md-checked ._md-container:before {  background-color: '{{accent-color-0.26}}'; }md-radio-group.md-THEME_NAME-theme.md-focused:not(:empty).md-primary .md-checked ._md-container:before,md-radio-group.md-THEME_NAME-theme.md-focused:not(:empty) .md-checked.md-primary ._md-container:before {  background-color: '{{primary-color-0.26}}'; }md-radio-group.md-THEME_NAME-theme.md-focused:not(:empty).md-warn .md-checked ._md-container:before,md-radio-group.md-THEME_NAME-theme.md-focused:not(:empty) .md-checked.md-warn ._md-container:before {  background-color: '{{warn-color-0.26}}'; }md-select.md-THEME_NAME-theme[disabled] ._md-select-value {  border-bottom-color: transparent;  background-image: linear-gradient(to right, \"{{foreground-3}}\" 0%, \"{{foreground-3}}\" 33%, transparent 0%);  background-image: -ms-linear-gradient(left, transparent 0%, \"{{foreground-3}}\" 100%); }md-select.md-THEME_NAME-theme ._md-select-value {  border-bottom-color: '{{foreground-4}}'; }  md-select.md-THEME_NAME-theme ._md-select-value._md-select-placeholder {    color: '{{foreground-3}}'; }md-select.md-THEME_NAME-theme.md-no-border ._md-select-value {  border-bottom-color: transparent; }md-select.md-THEME_NAME-theme.ng-invalid.ng-dirty ._md-select-value {  color: '{{warn-A700}}' !important;  border-bottom-color: '{{warn-A700}}' !important; }md-select.md-THEME_NAME-theme:not([disabled]):focus ._md-select-value {  border-bottom-color: '{{primary-color}}';  color: '{{ foreground-1 }}'; }  md-select.md-THEME_NAME-theme:not([disabled]):focus ._md-select-value._md-select-placeholder {    color: '{{ foreground-1 }}'; }md-select.md-THEME_NAME-theme:not([disabled]):focus.md-accent ._md-select-value {  border-bottom-color: '{{accent-color}}'; }md-select.md-THEME_NAME-theme:not([disabled]):focus.md-warn ._md-select-value {  border-bottom-color: '{{warn-color}}'; }md-select.md-THEME_NAME-theme[disabled] ._md-select-value {  color: '{{foreground-3}}'; }  md-select.md-THEME_NAME-theme[disabled] ._md-select-value._md-select-placeholder {    color: '{{foreground-3}}'; }md-select-menu.md-THEME_NAME-theme md-content {  background: '{{background-A100}}'; }  md-select-menu.md-THEME_NAME-theme md-content md-optgroup {    color: '{{background-600-0.87}}'; }  md-select-menu.md-THEME_NAME-theme md-content md-option {    color: '{{background-900-0.87}}'; }    md-select-menu.md-THEME_NAME-theme md-content md-option[disabled] ._md-text {      color: '{{background-400-0.87}}'; }    md-select-menu.md-THEME_NAME-theme md-content md-option:not([disabled]):focus, md-select-menu.md-THEME_NAME-theme md-content md-option:not([disabled]):hover {      background: '{{background-200}}'; }    md-select-menu.md-THEME_NAME-theme md-content md-option[selected] {      color: '{{primary-500}}'; }      md-select-menu.md-THEME_NAME-theme md-content md-option[selected]:focus {        color: '{{primary-600}}'; }      md-select-menu.md-THEME_NAME-theme md-content md-option[selected].md-accent {        color: '{{accent-color}}'; }        md-select-menu.md-THEME_NAME-theme md-content md-option[selected].md-accent:focus {          color: '{{accent-A700}}'; }._md-checkbox-enabled.md-THEME_NAME-theme .md-ripple {  color: '{{primary-600}}'; }._md-checkbox-enabled.md-THEME_NAME-theme[selected] .md-ripple {  color: '{{background-600}}'; }._md-checkbox-enabled.md-THEME_NAME-theme .md-ink-ripple {  color: '{{foreground-2}}'; }._md-checkbox-enabled.md-THEME_NAME-theme[selected] .md-ink-ripple {  color: '{{primary-color-0.87}}'; }._md-checkbox-enabled.md-THEME_NAME-theme ._md-icon {  border-color: '{{foreground-2}}'; }._md-checkbox-enabled.md-THEME_NAME-theme[selected] ._md-icon {  background-color: '{{primary-color-0.87}}'; }._md-checkbox-enabled.md-THEME_NAME-theme[selected].md-focused ._md-container:before {  background-color: '{{primary-color-0.26}}'; }._md-checkbox-enabled.md-THEME_NAME-theme[selected] ._md-icon:after {  border-color: '{{primary-contrast-0.87}}'; }._md-checkbox-enabled.md-THEME_NAME-theme .md-indeterminate[disabled] ._md-container {  color: '{{foreground-3}}'; }._md-checkbox-enabled.md-THEME_NAME-theme md-option ._md-text {  color: '{{background-900-0.87}}'; }md-sidenav.md-THEME_NAME-theme, md-sidenav.md-THEME_NAME-theme md-content {  background-color: '{{background-hue-1}}'; }md-slider.md-THEME_NAME-theme ._md-track {  background-color: '{{foreground-3}}'; }md-slider.md-THEME_NAME-theme ._md-track-ticks {  color: '{{background-contrast}}'; }md-slider.md-THEME_NAME-theme ._md-focus-ring {  background-color: '{{accent-A200-0.2}}'; }md-slider.md-THEME_NAME-theme ._md-disabled-thumb {  border-color: '{{background-color}}';  background-color: '{{background-color}}'; }md-slider.md-THEME_NAME-theme._md-min ._md-thumb:after {  background-color: '{{background-color}}';  border-color: '{{foreground-3}}'; }md-slider.md-THEME_NAME-theme._md-min ._md-focus-ring {  background-color: '{{foreground-3-0.38}}'; }md-slider.md-THEME_NAME-theme._md-min[md-discrete] ._md-thumb:after {  background-color: '{{background-contrast}}';  border-color: transparent; }md-slider.md-THEME_NAME-theme._md-min[md-discrete] ._md-sign {  background-color: '{{background-400}}'; }  md-slider.md-THEME_NAME-theme._md-min[md-discrete] ._md-sign:after {    border-top-color: '{{background-400}}'; }md-slider.md-THEME_NAME-theme._md-min[md-discrete][md-vertical] ._md-sign:after {  border-top-color: transparent;  border-left-color: '{{background-400}}'; }md-slider.md-THEME_NAME-theme ._md-track._md-track-fill {  background-color: '{{accent-color}}'; }md-slider.md-THEME_NAME-theme ._md-thumb:after {  border-color: '{{accent-color}}';  background-color: '{{accent-color}}'; }md-slider.md-THEME_NAME-theme ._md-sign {  background-color: '{{accent-color}}'; }  md-slider.md-THEME_NAME-theme ._md-sign:after {    border-top-color: '{{accent-color}}'; }md-slider.md-THEME_NAME-theme[md-vertical] ._md-sign:after {  border-top-color: transparent;  border-left-color: '{{accent-color}}'; }md-slider.md-THEME_NAME-theme ._md-thumb-text {  color: '{{accent-contrast}}'; }md-slider.md-THEME_NAME-theme.md-warn ._md-focus-ring {  background-color: '{{warn-200-0.38}}'; }md-slider.md-THEME_NAME-theme.md-warn ._md-track._md-track-fill {  background-color: '{{warn-color}}'; }md-slider.md-THEME_NAME-theme.md-warn ._md-thumb:after {  border-color: '{{warn-color}}';  background-color: '{{warn-color}}'; }md-slider.md-THEME_NAME-theme.md-warn ._md-sign {  background-color: '{{warn-color}}'; }  md-slider.md-THEME_NAME-theme.md-warn ._md-sign:after {    border-top-color: '{{warn-color}}'; }md-slider.md-THEME_NAME-theme.md-warn[md-vertical] ._md-sign:after {  border-top-color: transparent;  border-left-color: '{{warn-color}}'; }md-slider.md-THEME_NAME-theme.md-warn ._md-thumb-text {  color: '{{warn-contrast}}'; }md-slider.md-THEME_NAME-theme.md-primary ._md-focus-ring {  background-color: '{{primary-200-0.38}}'; }md-slider.md-THEME_NAME-theme.md-primary ._md-track._md-track-fill {  background-color: '{{primary-color}}'; }md-slider.md-THEME_NAME-theme.md-primary ._md-thumb:after {  border-color: '{{primary-color}}';  background-color: '{{primary-color}}'; }md-slider.md-THEME_NAME-theme.md-primary ._md-sign {  background-color: '{{primary-color}}'; }  md-slider.md-THEME_NAME-theme.md-primary ._md-sign:after {    border-top-color: '{{primary-color}}'; }md-slider.md-THEME_NAME-theme.md-primary[md-vertical] ._md-sign:after {  border-top-color: transparent;  border-left-color: '{{primary-color}}'; }md-slider.md-THEME_NAME-theme.md-primary ._md-thumb-text {  color: '{{primary-contrast}}'; }md-slider.md-THEME_NAME-theme[disabled] ._md-thumb:after {  border-color: transparent; }md-slider.md-THEME_NAME-theme[disabled]:not(._md-min) ._md-thumb:after, md-slider.md-THEME_NAME-theme[disabled][md-discrete] ._md-thumb:after {  background-color: '{{foreground-3}}';  border-color: transparent; }md-slider.md-THEME_NAME-theme[disabled][readonly] ._md-sign {  background-color: '{{background-400}}'; }  md-slider.md-THEME_NAME-theme[disabled][readonly] ._md-sign:after {    border-top-color: '{{background-400}}'; }md-slider.md-THEME_NAME-theme[disabled][readonly][md-vertical] ._md-sign:after {  border-top-color: transparent;  border-left-color: '{{background-400}}'; }md-slider.md-THEME_NAME-theme[disabled][readonly] ._md-disabled-thumb {  border-color: transparent;  background-color: transparent; }md-slider-container[disabled] > *:first-child:not(md-slider),md-slider-container[disabled] > *:last-child:not(md-slider) {  color: '{{foreground-3}}'; }.md-subheader.md-THEME_NAME-theme {  color: '{{ foreground-2-0.23 }}';  background-color: '{{background-default}}'; }  .md-subheader.md-THEME_NAME-theme.md-primary {    color: '{{primary-color}}'; }  .md-subheader.md-THEME_NAME-theme.md-accent {    color: '{{accent-color}}'; }  .md-subheader.md-THEME_NAME-theme.md-warn {    color: '{{warn-color}}'; }md-switch.md-THEME_NAME-theme .md-ink-ripple {  color: '{{background-500}}'; }md-switch.md-THEME_NAME-theme ._md-thumb {  background-color: '{{background-50}}'; }md-switch.md-THEME_NAME-theme ._md-bar {  background-color: '{{background-500}}'; }md-switch.md-THEME_NAME-theme.md-checked .md-ink-ripple {  color: '{{accent-color}}'; }md-switch.md-THEME_NAME-theme.md-checked ._md-thumb {  background-color: '{{accent-color}}'; }md-switch.md-THEME_NAME-theme.md-checked ._md-bar {  background-color: '{{accent-color-0.5}}'; }md-switch.md-THEME_NAME-theme.md-checked.md-focused ._md-thumb:before {  background-color: '{{accent-color-0.26}}'; }md-switch.md-THEME_NAME-theme.md-checked.md-primary .md-ink-ripple {  color: '{{primary-color}}'; }md-switch.md-THEME_NAME-theme.md-checked.md-primary ._md-thumb {  background-color: '{{primary-color}}'; }md-switch.md-THEME_NAME-theme.md-checked.md-primary ._md-bar {  background-color: '{{primary-color-0.5}}'; }md-switch.md-THEME_NAME-theme.md-checked.md-primary.md-focused ._md-thumb:before {  background-color: '{{primary-color-0.26}}'; }md-switch.md-THEME_NAME-theme.md-checked.md-warn .md-ink-ripple {  color: '{{warn-color}}'; }md-switch.md-THEME_NAME-theme.md-checked.md-warn ._md-thumb {  background-color: '{{warn-color}}'; }md-switch.md-THEME_NAME-theme.md-checked.md-warn ._md-bar {  background-color: '{{warn-color-0.5}}'; }md-switch.md-THEME_NAME-theme.md-checked.md-warn.md-focused ._md-thumb:before {  background-color: '{{warn-color-0.26}}'; }md-switch.md-THEME_NAME-theme[disabled] ._md-thumb {  background-color: '{{background-400}}'; }md-switch.md-THEME_NAME-theme[disabled] ._md-bar {  background-color: '{{foreground-4}}'; }md-tabs.md-THEME_NAME-theme md-tabs-wrapper {  background-color: transparent;  border-color: '{{foreground-4}}'; }md-tabs.md-THEME_NAME-theme .md-paginator md-icon {  color: '{{primary-color}}'; }md-tabs.md-THEME_NAME-theme md-ink-bar {  color: '{{accent-color}}';  background: '{{accent-color}}'; }md-tabs.md-THEME_NAME-theme .md-tab {  color: '{{foreground-2}}'; }  md-tabs.md-THEME_NAME-theme .md-tab[disabled], md-tabs.md-THEME_NAME-theme .md-tab[disabled] md-icon {    color: '{{foreground-3}}'; }  md-tabs.md-THEME_NAME-theme .md-tab.md-active, md-tabs.md-THEME_NAME-theme .md-tab.md-active md-icon, md-tabs.md-THEME_NAME-theme .md-tab.md-focused, md-tabs.md-THEME_NAME-theme .md-tab.md-focused md-icon {    color: '{{primary-color}}'; }  md-tabs.md-THEME_NAME-theme .md-tab.md-focused {    background: '{{primary-color-0.1}}'; }  md-tabs.md-THEME_NAME-theme .md-tab .md-ripple-container {    color: '{{accent-A100}}'; }md-tabs.md-THEME_NAME-theme.md-accent > md-tabs-wrapper {  background-color: '{{accent-color}}'; }  md-tabs.md-THEME_NAME-theme.md-accent > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]) {    color: '{{accent-A100}}'; }    md-tabs.md-THEME_NAME-theme.md-accent > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-active, md-tabs.md-THEME_NAME-theme.md-accent > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-active md-icon, md-tabs.md-THEME_NAME-theme.md-accent > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-focused, md-tabs.md-THEME_NAME-theme.md-accent > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-focused md-icon {      color: '{{accent-contrast}}'; }    md-tabs.md-THEME_NAME-theme.md-accent > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-focused {      background: '{{accent-contrast-0.1}}'; }  md-tabs.md-THEME_NAME-theme.md-accent > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-ink-bar {    color: '{{primary-600-1}}';    background: '{{primary-600-1}}'; }md-tabs.md-THEME_NAME-theme.md-primary > md-tabs-wrapper {  background-color: '{{primary-color}}'; }  md-tabs.md-THEME_NAME-theme.md-primary > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]) {    color: '{{primary-100}}'; }    md-tabs.md-THEME_NAME-theme.md-primary > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-active, md-tabs.md-THEME_NAME-theme.md-primary > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-active md-icon, md-tabs.md-THEME_NAME-theme.md-primary > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-focused, md-tabs.md-THEME_NAME-theme.md-primary > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-focused md-icon {      color: '{{primary-contrast}}'; }    md-tabs.md-THEME_NAME-theme.md-primary > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-focused {      background: '{{primary-contrast-0.1}}'; }md-tabs.md-THEME_NAME-theme.md-warn > md-tabs-wrapper {  background-color: '{{warn-color}}'; }  md-tabs.md-THEME_NAME-theme.md-warn > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]) {    color: '{{warn-100}}'; }    md-tabs.md-THEME_NAME-theme.md-warn > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-active, md-tabs.md-THEME_NAME-theme.md-warn > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-active md-icon, md-tabs.md-THEME_NAME-theme.md-warn > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-focused, md-tabs.md-THEME_NAME-theme.md-warn > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-focused md-icon {      color: '{{warn-contrast}}'; }    md-tabs.md-THEME_NAME-theme.md-warn > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-focused {      background: '{{warn-contrast-0.1}}'; }md-toolbar > md-tabs.md-THEME_NAME-theme > md-tabs-wrapper {  background-color: '{{primary-color}}'; }  md-toolbar > md-tabs.md-THEME_NAME-theme > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]) {    color: '{{primary-100}}'; }    md-toolbar > md-tabs.md-THEME_NAME-theme > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-active, md-toolbar > md-tabs.md-THEME_NAME-theme > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-active md-icon, md-toolbar > md-tabs.md-THEME_NAME-theme > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-focused, md-toolbar > md-tabs.md-THEME_NAME-theme > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-focused md-icon {      color: '{{primary-contrast}}'; }    md-toolbar > md-tabs.md-THEME_NAME-theme > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-focused {      background: '{{primary-contrast-0.1}}'; }md-toolbar.md-accent > md-tabs.md-THEME_NAME-theme > md-tabs-wrapper {  background-color: '{{accent-color}}'; }  md-toolbar.md-accent > md-tabs.md-THEME_NAME-theme > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]) {    color: '{{accent-A100}}'; }    md-toolbar.md-accent > md-tabs.md-THEME_NAME-theme > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-active, md-toolbar.md-accent > md-tabs.md-THEME_NAME-theme > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-active md-icon, md-toolbar.md-accent > md-tabs.md-THEME_NAME-theme > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-focused, md-toolbar.md-accent > md-tabs.md-THEME_NAME-theme > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-focused md-icon {      color: '{{accent-contrast}}'; }    md-toolbar.md-accent > md-tabs.md-THEME_NAME-theme > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-focused {      background: '{{accent-contrast-0.1}}'; }  md-toolbar.md-accent > md-tabs.md-THEME_NAME-theme > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-ink-bar {    color: '{{primary-600-1}}';    background: '{{primary-600-1}}'; }md-toolbar.md-warn > md-tabs.md-THEME_NAME-theme > md-tabs-wrapper {  background-color: '{{warn-color}}'; }  md-toolbar.md-warn > md-tabs.md-THEME_NAME-theme > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]) {    color: '{{warn-100}}'; }    md-toolbar.md-warn > md-tabs.md-THEME_NAME-theme > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-active, md-toolbar.md-warn > md-tabs.md-THEME_NAME-theme > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-active md-icon, md-toolbar.md-warn > md-tabs.md-THEME_NAME-theme > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-focused, md-toolbar.md-warn > md-tabs.md-THEME_NAME-theme > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-focused md-icon {      color: '{{warn-contrast}}'; }    md-toolbar.md-warn > md-tabs.md-THEME_NAME-theme > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-focused {      background: '{{warn-contrast-0.1}}'; }md-toast.md-THEME_NAME-theme .md-toast-content {  background-color: #323232;  color: '{{background-50}}'; }  md-toast.md-THEME_NAME-theme .md-toast-content .md-button {    color: '{{background-50}}'; }    md-toast.md-THEME_NAME-theme .md-toast-content .md-button.md-highlight {      color: '{{accent-color}}'; }      md-toast.md-THEME_NAME-theme .md-toast-content .md-button.md-highlight.md-primary {        color: '{{primary-color}}'; }      md-toast.md-THEME_NAME-theme .md-toast-content .md-button.md-highlight.md-warn {        color: '{{warn-color}}'; }md-toolbar.md-THEME_NAME-theme:not(.md-menu-toolbar) {  background-color: '{{primary-color}}';  color: '{{primary-contrast}}'; }  md-toolbar.md-THEME_NAME-theme:not(.md-menu-toolbar) md-icon {    color: '{{primary-contrast}}';    fill: '{{primary-contrast}}'; }  md-toolbar.md-THEME_NAME-theme:not(.md-menu-toolbar) .md-button[disabled] md-icon {    color: '{{primary-contrast-0.26}}';    fill: '{{primary-contrast-0.26}}'; }  md-toolbar.md-THEME_NAME-theme:not(.md-menu-toolbar).md-accent {    background-color: '{{accent-color}}';    color: '{{accent-contrast}}'; }    md-toolbar.md-THEME_NAME-theme:not(.md-menu-toolbar).md-accent .md-ink-ripple {      color: '{{accent-contrast}}'; }    md-toolbar.md-THEME_NAME-theme:not(.md-menu-toolbar).md-accent md-icon {      color: '{{accent-contrast}}';      fill: '{{accent-contrast}}'; }    md-toolbar.md-THEME_NAME-theme:not(.md-menu-toolbar).md-accent .md-button[disabled] md-icon {      color: '{{accent-contrast-0.26}}';      fill: '{{accent-contrast-0.26}}'; }  md-toolbar.md-THEME_NAME-theme:not(.md-menu-toolbar).md-warn {    background-color: '{{warn-color}}';    color: '{{warn-contrast}}'; }md-tooltip.md-THEME_NAME-theme {  color: '{{background-A100}}'; }  md-tooltip.md-THEME_NAME-theme ._md-content {    background-color: '{{foreground-2}}'; }md-bottom-sheet.md-THEME_NAME-theme {  background-color: '{{background-50}}';  border-top-color: '{{background-300}}'; }  md-bottom-sheet.md-THEME_NAME-theme.md-list md-list-item {    color: '{{foreground-1}}'; }  md-bottom-sheet.md-THEME_NAME-theme .md-subheader {    background-color: '{{background-50}}'; }  md-bottom-sheet.md-THEME_NAME-theme .md-subheader {    color: '{{foreground-1}}'; }md-progress-circular.md-THEME_NAME-theme path {  stroke: '{{primary-color}}'; }md-progress-circular.md-THEME_NAME-theme.md-warn path {  stroke: '{{warn-color}}'; }md-progress-circular.md-THEME_NAME-theme.md-accent path {  stroke: '{{accent-color}}'; }"); 
 })();
 
 
