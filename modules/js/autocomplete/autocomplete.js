@@ -463,14 +463,17 @@ function MdAutocompleteCtrl ($scope, $element, $mdUtil, $mdConstant, $mdTheming,
         select(ctrl.index);
         break;
       case $mdConstant.KEY_CODE.ESCAPE:
-        if ($scope.noClearOnEscape && $scope.noBlurOnEscape) //nothing to capture
-          break;
+        // Only return if blur is disabled
+        // Only return if dropdown is hidden and not loading
+        // Only return if text clearing is disabled or text is already cleared
+        if (!!$scope.noBlurOnEscape && ctrl.hidden && !ctrl.loading && (!!$scope.noClearOnEscape || !$scope.searchText))
+            return; 
 
         event.stopPropagation();
         event.preventDefault();
 
         if (!$scope.noClearOnEscape && $scope.searchText)
-          clearValue();
+          clearValue(true);
 
         if (!$scope.noBlurOnEscape)
           doBlur(true); // Force the component to blur if they hit escape
@@ -641,7 +644,7 @@ function MdAutocompleteCtrl ($scope, $element, $mdUtil, $mdConstant, $mdTheming,
   /**
    * Clears the searchText value and selected item.
    */
-  function clearValue () {
+  function clearValue (clearText) {
     // Set the loading to true so we don't see flashes of content.
     // The flashing will only occour when an async request is running.
     // So the loading process will stop when the results had been retrieved.
@@ -650,14 +653,17 @@ function MdAutocompleteCtrl ($scope, $element, $mdUtil, $mdConstant, $mdTheming,
     // Reset our variables
     ctrl.index = 0;
     ctrl.matches = [];
-    $scope.searchText = '';
-
-    // Per http://www.w3schools.com/jsref/event_oninput.asp
-    var eventObj = document.createEvent('CustomEvent');
-    eventObj.initCustomEvent('input', true, true, { value: $scope.searchText });
-    elements.input.dispatchEvent(eventObj);
-
-    elements.input.focus();
+    if (clearText || (clearText === undefined))
+    {
+        $scope.searchText = '';
+    
+        // Per http://www.w3schools.com/jsref/event_oninput.asp
+        var eventObj = document.createEvent('CustomEvent');
+        eventObj.initCustomEvent('input', true, true, { value: $scope.searchText });
+        elements.input.dispatchEvent(eventObj);
+    
+        elements.input.focus();
+    }
   }
 
   /**
@@ -876,8 +882,8 @@ angular
  *     the item if the search text is an exact match
  * @param {boolean=} md-match-case-insensitive When set and using `md-select-on-match`, autocomplete
  *     will select on case-insensitive match
- * @param {boolean=} md-no-blur-on-escape If true, focus will not blurred on escape keydown
- * @param {boolean=} md-no-clear-on-escape If true, input will not cleared on escape keydown
+ * @param {boolean=} md-no-blur-on-escape If true, focus will not be blurred on escape keydown
+ * @param {boolean=} md-no-clear-on-escape If true, input will not be cleared on escape keydown
  *
  * @usage
  * ### Basic Example
