@@ -464,21 +464,20 @@ function MdAutocompleteCtrl ($scope, $element, $mdUtil, $mdConstant, $mdTheming,
         select(ctrl.index);
         break;
       case $mdConstant.KEY_CODE.ESCAPE:
-        // Only return if blur is disabled
-        // Only return if dropdown is hidden and not loading
-        // Only return if text clearing is disabled or text is already cleared
-        if (!!$scope.noBlurOnEscape && ctrl.hidden && !ctrl.loading && (!!$scope.noClearOnEscape || !$scope.searchText))
-          return; 
-
+        if (!shouldProcessEscape()) return;
         event.stopPropagation();
         event.preventDefault();
 
-        clearValue(!$scope.noClearOnEscape && $scope.searchText);
+        clearValue(shouldClearOnEscape() && $scope.searchText);
 
-        if (!$scope.noBlurOnEscape)
-          doBlur(true); // Force the component to blur if they hit escape
-        else
-          ctrl.hidden = true; // manually hide (needed for mdNotFound support)
+        if (shouldBlurOnEscape()) {
+          // Force the component to blur if they hit escape
+          doBlur(true);
+        }
+        else {
+          // Manually hide (needed for mdNotFound support)
+          ctrl.hidden = true;
+        }
 
         break;
       default:
@@ -556,6 +555,38 @@ function MdAutocompleteCtrl ($scope, $element, $mdUtil, $mdConstant, $mdTheming,
     else if (hasSelection()) return true;           // Hide if there is already a selection
     else if (!hasFocus) return true;                // Hide if the input does not have focus
     else return !shouldShow();                      // Defer to standard show logic
+  }
+
+  /**
+   * Determines if the escape keydown should be processed
+   * @returns {boolean}
+   */
+  function shouldProcessEscape() {
+    if (shouldBlurOnEscape()) return true;                            // Needs blur
+    else if (!ctrl.hidden) return true;                               // Hide dropdown
+    else if (ctrl.loading) return true;                               // Cancel loading
+    else if (shouldClearOnEscape() && $scope.searchText) return true; // Clear Text
+    else return false;
+  }
+
+  /**
+   * Determines if the escape key should blur focus
+   * @returns {boolean}
+   */
+  function shouldBlurOnEscape() {
+    if (!$scope.escapeOptions) return true;                     // default true
+    if ($scope.escapeOptions.indexOf('blur') >= 0) return true; // blur is requested
+    return false;
+  }
+
+  /**
+   * Determines if the escape key should clear input
+   * @returns {boolean}
+   */
+  function shouldClearOnEscape() {
+    if (!$scope.escapeOptions) return true;                      // default true
+    if ($scope.escapeOptions.indexOf('clear') >= 0) return true; // blur is requested
+    return false;
   }
 
   /**
@@ -646,7 +677,7 @@ function MdAutocompleteCtrl ($scope, $element, $mdUtil, $mdConstant, $mdTheming,
   /**
    * Clears the searchText value and selected item.
    */
-  function clearValue (clearText) {
+  function clearValue (shouldClearText) {
     // Set the loading to true so we don't see flashes of content.
     // The flashing will only occour when an async request is running.
     // So the loading process will stop when the results had been retrieved.
@@ -655,7 +686,7 @@ function MdAutocompleteCtrl ($scope, $element, $mdUtil, $mdConstant, $mdTheming,
     // Reset our variables
     ctrl.index = 0;
     ctrl.matches = [];
-    if (clearText || (clearText === undefined)) {
+    if (shouldClearText || (shouldClearText === undefined)) {
         $scope.searchText = '';
     
         // Per http://www.w3schools.com/jsref/event_oninput.asp
@@ -667,7 +698,7 @@ function MdAutocompleteCtrl ($scope, $element, $mdUtil, $mdConstant, $mdTheming,
     }
     else {
         // If we're not clearing text, no change event will trigger, so cancel loading
-        setLoading(false);   
+        setLoading(false);
     }
   }
 
@@ -887,8 +918,8 @@ angular
  *     the item if the search text is an exact match
  * @param {boolean=} md-match-case-insensitive When set and using `md-select-on-match`, autocomplete
  *     will select on case-insensitive match
- * @param {boolean=} md-no-blur-on-escape If true, focus will not be blurred on escape keydown
- * @param {boolean=} md-no-clear-on-escape If true, input will not be cleared on escape keydown
+ * @param {string=} md-escape-options Override escape key logic. Default is `blur clear`.
+ *     Options: `blur|clear`, `none`
  *
  * @usage
  * ### Basic Example
@@ -971,8 +1002,7 @@ function MdAutocomplete () {
       autoselect:       '=?mdAutoselect',
       menuClass:        '@?mdMenuClass',
       inputId:          '@?mdInputId',
-      noBlurOnEscape:   '=?mdNoBlurOnEscape',
-      noClearOnEscape:  '=?mdNoClearOnEscape'
+      escapeOptions:    '=?mdEscapeOptions'
     },
     link: function(scope, element, attrs, controller) {
       // Retrieve the state of using a md-not-found template by using our attribute, which will
