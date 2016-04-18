@@ -1001,7 +1001,7 @@ function MdAutocomplete () {
       autoselect:       '=?mdAutoselect',
       menuClass:        '@?mdMenuClass',
       inputId:          '@?mdInputId',
-      escapeOptions:    '=?mdEscapeOptions'
+      escapeOptions:    '@?mdEscapeOptions'
     },
     link: function(scope, element, attrs, controller) {
       // Retrieve the state of using a md-not-found template by using our attribute, which will

@@ -1569,324 +1569,6 @@ md-bottom-sheet {
   }
 }
 
-//$checkbox-width: 20px !default;
-//$checkbox-height: $checkbox-width !default;
-//$checkbox-border-radius: 2px !default;
-//$checkbox-border-width: 2px !default;
-//
-// ^^ defined in variables.scss
-//
-$checkbox-margin: 3px !default;
-$checkbox-margin-end: 16px !default;
-
-$checkbox-text-margin: 56px !default;
-$checkbox-top: 12px !default;
-
-.md-inline-form {
-  md-checkbox {
-    margin: 19px 0 18px;
-  }
-}
-
-md-checkbox {
-  box-sizing: border-box;
-  display: inline-block;
-  margin: $checkbox-margin;
-  white-space: nowrap;
-  cursor: pointer;
-  outline: none;
-  user-select: none;
-  position: relative;
-  min-width: $checkbox-width;
-  min-height: $checkbox-width * 2;
-  @include rtl(margin-left, $checkbox-margin, $checkbox-margin-end);
-  @include rtl(margin-right, $checkbox-margin-end, $checkbox-margin);
-
-  &:last-of-type {
-    @include rtl(margin-left, $checkbox-margin, 0);
-    @include rtl(margin-right, 0, $checkbox-margin);
-  }
-
-  &.md-focused:not([disabled]) {
-    ._md-container:before {
-      left: -8px;
-      top: -8px;
-      right: -8px;
-      bottom: -8px;
-    }
-
-    &:not(.md-checked) {
-      ._md-container:before {
-        background-color: rgba(0, 0, 0, 0.12);
-      }
-    }
-  }
-
-  &.md-align-top-left > div._md-container {
-    top: $checkbox-top;
-  }
-
-  @include checkbox-container;
-
-  ._md-label {
-    box-sizing: border-box;
-    position: relative;
-    display: inline-block;
-    vertical-align: middle;
-    white-space: normal;
-    user-select: text;
-    margin-top: 6px;
-    margin-bottom: 6px;
-
-    @include rtl(margin-left, $checkbox-text-margin - $checkbox-margin, 0);
-    @include rtl(margin-right, 0, $checkbox-text-margin - $checkbox-margin);
-
-    &:empty {
-      display: none;
-    }
-
-  }
-}
-
-$chip-font-size: rem(1.6) !default;
-$chip-height: rem(3.2) !default;
-$chip-padding: 0 rem(1.2) 0 rem(1.2) !default;
-$chip-input-padding: 0 !default;
-$chip-remove-padding-right: rem(2.2) !default;
-$chip-remove-line-height: rem(2.2) !default;
-$chip-margin: rem(0.8) rem(0.8) 0 0 !default;
-$chip-wrap-padding: 0 0 rem(0.8) rem(0.3) !default;
-$chip-delete-icon-size: rem(1.8) !default;
-$contact-chip-padding: 0 rem(2.5) 0 0 !default;
-$contact-chip-suggestion-image-height: rem(4.0) !default;
-$contact-chip-suggestion-margin: rem(0.8) !default;
-$contact-chip-name-width: rem(12) !default;
-
-.md-contact-chips {
-  .md-chips {
-    md-chip {
-      @include rtl(padding, $contact-chip-padding, rtl-value($contact-chip-padding));
-      .md-contact-avatar {
-        @include rtl(float, left, right);
-        img {
-          height: $chip-height;
-          border-radius: $chip-height / 2;
-        }
-      }
-      .md-contact-name {
-        display: inline-block;
-        height: $chip-height;
-        @include rtl-prop(margin-left, margin-right, rem(0.8));
-      }
-    }
-  }
-}
-.md-contact-suggestion {
-  height: ($contact-chip-suggestion-margin * 2) + $contact-chip-suggestion-image-height;
-  img {
-    height: $contact-chip-suggestion-image-height;
-    border-radius: $contact-chip-suggestion-image-height / 2;
-    margin-top: $contact-chip-suggestion-margin;
-  }
-  .md-contact-name {
-    @include rtl-prop(margin-left, margin-right, $contact-chip-suggestion-margin);
-    width: $contact-chip-name-width;
-  }
-  .md-contact-name, .md-contact-email {
-    display: inline-block;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-}
-.md-contact-chips-suggestions li {
-  height: 100%;
-}
-.md-chips {
-  @include pie-clearfix();
-
-  display: block;
-  font-family: $font-family;
-  font-size: $chip-font-size;
-  @include rtl(padding, $chip-wrap-padding, rtl-value($chip-wrap-padding));
-  vertical-align: middle;
-
-  &.md-readonly ._md-chip-input-container {
-    min-height: $chip-height;
-  }
-
-  &:not(.md-readonly) {
-    cursor: text;
-
-    md-chip:not(.md-readonly) {
-      @include rtl-prop(padding-right, padding-left, $chip-remove-padding-right);
-
-      ._md-chip-content {
-        @include rtl-prop(padding-right, padding-left, rem(0.4));
-      }
-    }
-  }
-
-  md-chip {
-    cursor: default;
-    border-radius: $chip-height / 2;
-    display: block;
-    height: $chip-height;
-    line-height: $chip-height;
-    @include rtl(margin, $chip-margin, rtl-value($chip-margin));
-    padding: $chip-padding;
-    @include rtl(float, left, right);
-    box-sizing: border-box;
-    max-width: 100%;
-    position: relative;
-
-    ._md-chip-content {
-      display: block;
-      @include rtl(float, left, right);
-      white-space: nowrap;
-      max-width: 100%;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      &:focus {
-        outline: none;
-      }
-    }
-    &._md-chip-content-edit-is-enabled {
-      -webkit-user-select: none; /* webkit (safari, chrome) browsers */
-      -moz-user-select: none; /* mozilla browsers */
-      -khtml-user-select: none; /* webkit (konqueror) browsers */
-      -ms-user-select: none; /* IE10+ */
-    }
-    ._md-chip-remove-container {
-      position: absolute;
-      @include rtl-prop(right, left, 0);
-      line-height: $chip-remove-line-height;
-    }
-    ._md-chip-remove {
-      text-align: center;
-      width: $chip-height;
-      height: $chip-height;
-      min-width: 0;
-      padding: 0;
-      background: transparent;
-      border: none;
-      box-shadow: none;
-      margin: 0;
-      position: relative;
-      md-icon {
-        height: $chip-delete-icon-size;
-        width: $chip-delete-icon-size;
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate3d(-50%, -50%, 0);
-      }
-    }
-  }
-  ._md-chip-input-container {
-    display: block;
-    line-height: $chip-height;
-    @include rtl(margin, $chip-margin, rtl-value($chip-margin));
-    padding: $chip-input-padding;
-    @include rtl(float, left, right);
-    input {
-      &:not([type]),&[type="email"],&[type="number"],&[type="tel"],&[type="url"],&[type="text"] {
-        border: 0;
-        height: $chip-height;
-        line-height: $chip-height;
-        padding: 0;
-        &:focus {
-          outline: none;
-        }
-      }
-    }
-    md-autocomplete, md-autocomplete-wrap {
-      background: transparent;
-      height: $chip-height;
-    }
-    md-autocomplete {
-      md-autocomplete-wrap {
-        box-shadow: none;
-      }
-      input {
-        position: relative;
-      }
-    }
-    input {
-      border:0;
-      height: $chip-height;
-      line-height: $chip-height;
-      padding: 0;
-      &:focus {
-        outline:none;
-      }
-    }
-    md-autocomplete, md-autocomplete-wrap {
-      height: $chip-height;
-    }
-    md-autocomplete {
-      box-shadow: none;
-      input {
-        position: relative;
-      }
-    }
-    &:not(:first-child) {
-      @include rtl(margin, $chip-margin, rtl-value($chip-margin));
-    }
-    input {
-      background:transparent;
-      border-width: 0;
-    }
-  }
-  md-autocomplete {
-    button {
-      display: none;
-    }
-  }
-}
-// IE only
-@media screen and (-ms-high-contrast: active) {
-  ._md-chip-input-container,
-  md-chip {
-    border: 1px solid #fff;
-  }
-  ._md-chip-input-container md-autocomplete {
-    border: none;
-  }
-}
-
-
-md-content {
-
-  display: block;
-  position: relative;
-  overflow: auto;
-  -webkit-overflow-scrolling: touch;
-
-  &[md-scroll-y] {
-    overflow-y: auto;
-    overflow-x: hidden;
-  }
-  &[md-scroll-x] {
-    overflow-x: auto;
-    overflow-y: hidden;
-  }
-  &[md-scroll-xy] {
-  }
-
-  // For iOS allow disabling of momentum scrolling
-  // @see issue #2640.
-
-  &.md-no-momentum {
-    -webkit-overflow-scrolling: auto;
-  }
-
-  @media print {
-    overflow: visible !important;
-  }
-}
-
-
-
 $card-padding: 16px !default;
 $card-box-shadow: $whiteframe-shadow-1dp !default;
 
@@ -2100,6 +1782,85 @@ md-card {
   }
 }
 
+
+//$checkbox-width: 20px !default;
+//$checkbox-height: $checkbox-width !default;
+//$checkbox-border-radius: 2px !default;
+//$checkbox-border-width: 2px !default;
+//
+// ^^ defined in variables.scss
+//
+$checkbox-margin: 3px !default;
+$checkbox-margin-end: 16px !default;
+
+$checkbox-text-margin: 56px !default;
+$checkbox-top: 12px !default;
+
+.md-inline-form {
+  md-checkbox {
+    margin: 19px 0 18px;
+  }
+}
+
+md-checkbox {
+  box-sizing: border-box;
+  display: inline-block;
+  margin: $checkbox-margin;
+  white-space: nowrap;
+  cursor: pointer;
+  outline: none;
+  user-select: none;
+  position: relative;
+  min-width: $checkbox-width;
+  min-height: $checkbox-width * 2;
+  @include rtl(margin-left, $checkbox-margin, $checkbox-margin-end);
+  @include rtl(margin-right, $checkbox-margin-end, $checkbox-margin);
+
+  &:last-of-type {
+    @include rtl(margin-left, $checkbox-margin, 0);
+    @include rtl(margin-right, 0, $checkbox-margin);
+  }
+
+  &.md-focused:not([disabled]) {
+    ._md-container:before {
+      left: -8px;
+      top: -8px;
+      right: -8px;
+      bottom: -8px;
+    }
+
+    &:not(.md-checked) {
+      ._md-container:before {
+        background-color: rgba(0, 0, 0, 0.12);
+      }
+    }
+  }
+
+  &.md-align-top-left > div._md-container {
+    top: $checkbox-top;
+  }
+
+  @include checkbox-container;
+
+  ._md-label {
+    box-sizing: border-box;
+    position: relative;
+    display: inline-block;
+    vertical-align: middle;
+    white-space: normal;
+    user-select: text;
+    margin-top: 6px;
+    margin-bottom: 6px;
+
+    @include rtl(margin-left, $checkbox-text-margin - $checkbox-margin, 0);
+    @include rtl(margin-right, 0, $checkbox-text-margin - $checkbox-margin);
+
+    &:empty {
+      display: none;
+    }
+
+  }
+}
 
 $button-border-radius: 3px !default;
 $button-fab-border-radius: 50% !default;
@@ -2337,6 +2098,38 @@ button.md-button::-moz-focus-inner {
   }
 }
 
+md-content {
+
+  display: block;
+  position: relative;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+
+  &[md-scroll-y] {
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+  &[md-scroll-x] {
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+  &[md-scroll-xy] {
+  }
+
+  // For iOS allow disabling of momentum scrolling
+  // @see issue #2640.
+
+  &.md-no-momentum {
+    -webkit-overflow-scrolling: auto;
+  }
+
+  @media print {
+    overflow: visible !important;
+  }
+}
+
+
+
 $dialog-padding: $baseline-grid * 3 !default;
 
 .md-dialog-is-showing {
@@ -2460,6 +2253,213 @@ md-dialog {
     border-radius: 0;
   }
 }
+
+$chip-font-size: rem(1.6) !default;
+$chip-height: rem(3.2) !default;
+$chip-padding: 0 rem(1.2) 0 rem(1.2) !default;
+$chip-input-padding: 0 !default;
+$chip-remove-padding-right: rem(2.2) !default;
+$chip-remove-line-height: rem(2.2) !default;
+$chip-margin: rem(0.8) rem(0.8) 0 0 !default;
+$chip-wrap-padding: 0 0 rem(0.8) rem(0.3) !default;
+$chip-delete-icon-size: rem(1.8) !default;
+$contact-chip-padding: 0 rem(2.5) 0 0 !default;
+$contact-chip-suggestion-image-height: rem(4.0) !default;
+$contact-chip-suggestion-margin: rem(0.8) !default;
+$contact-chip-name-width: rem(12) !default;
+
+.md-contact-chips {
+  .md-chips {
+    md-chip {
+      @include rtl(padding, $contact-chip-padding, rtl-value($contact-chip-padding));
+      .md-contact-avatar {
+        @include rtl(float, left, right);
+        img {
+          height: $chip-height;
+          border-radius: $chip-height / 2;
+        }
+      }
+      .md-contact-name {
+        display: inline-block;
+        height: $chip-height;
+        @include rtl-prop(margin-left, margin-right, rem(0.8));
+      }
+    }
+  }
+}
+.md-contact-suggestion {
+  height: ($contact-chip-suggestion-margin * 2) + $contact-chip-suggestion-image-height;
+  img {
+    height: $contact-chip-suggestion-image-height;
+    border-radius: $contact-chip-suggestion-image-height / 2;
+    margin-top: $contact-chip-suggestion-margin;
+  }
+  .md-contact-name {
+    @include rtl-prop(margin-left, margin-right, $contact-chip-suggestion-margin);
+    width: $contact-chip-name-width;
+  }
+  .md-contact-name, .md-contact-email {
+    display: inline-block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+.md-contact-chips-suggestions li {
+  height: 100%;
+}
+.md-chips {
+  @include pie-clearfix();
+
+  display: block;
+  font-family: $font-family;
+  font-size: $chip-font-size;
+  @include rtl(padding, $chip-wrap-padding, rtl-value($chip-wrap-padding));
+  vertical-align: middle;
+
+  &.md-readonly ._md-chip-input-container {
+    min-height: $chip-height;
+  }
+
+  &:not(.md-readonly) {
+    cursor: text;
+
+    md-chip:not(.md-readonly) {
+      @include rtl-prop(padding-right, padding-left, $chip-remove-padding-right);
+
+      ._md-chip-content {
+        @include rtl-prop(padding-right, padding-left, rem(0.4));
+      }
+    }
+  }
+
+  md-chip {
+    cursor: default;
+    border-radius: $chip-height / 2;
+    display: block;
+    height: $chip-height;
+    line-height: $chip-height;
+    @include rtl(margin, $chip-margin, rtl-value($chip-margin));
+    padding: $chip-padding;
+    @include rtl(float, left, right);
+    box-sizing: border-box;
+    max-width: 100%;
+    position: relative;
+
+    ._md-chip-content {
+      display: block;
+      @include rtl(float, left, right);
+      white-space: nowrap;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      &:focus {
+        outline: none;
+      }
+    }
+    &._md-chip-content-edit-is-enabled {
+      -webkit-user-select: none; /* webkit (safari, chrome) browsers */
+      -moz-user-select: none; /* mozilla browsers */
+      -khtml-user-select: none; /* webkit (konqueror) browsers */
+      -ms-user-select: none; /* IE10+ */
+    }
+    ._md-chip-remove-container {
+      position: absolute;
+      @include rtl-prop(right, left, 0);
+      line-height: $chip-remove-line-height;
+    }
+    ._md-chip-remove {
+      text-align: center;
+      width: $chip-height;
+      height: $chip-height;
+      min-width: 0;
+      padding: 0;
+      background: transparent;
+      border: none;
+      box-shadow: none;
+      margin: 0;
+      position: relative;
+      md-icon {
+        height: $chip-delete-icon-size;
+        width: $chip-delete-icon-size;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate3d(-50%, -50%, 0);
+      }
+    }
+  }
+  ._md-chip-input-container {
+    display: block;
+    line-height: $chip-height;
+    @include rtl(margin, $chip-margin, rtl-value($chip-margin));
+    padding: $chip-input-padding;
+    @include rtl(float, left, right);
+    input {
+      &:not([type]),&[type="email"],&[type="number"],&[type="tel"],&[type="url"],&[type="text"] {
+        border: 0;
+        height: $chip-height;
+        line-height: $chip-height;
+        padding: 0;
+        &:focus {
+          outline: none;
+        }
+      }
+    }
+    md-autocomplete, md-autocomplete-wrap {
+      background: transparent;
+      height: $chip-height;
+    }
+    md-autocomplete {
+      md-autocomplete-wrap {
+        box-shadow: none;
+      }
+      input {
+        position: relative;
+      }
+    }
+    input {
+      border:0;
+      height: $chip-height;
+      line-height: $chip-height;
+      padding: 0;
+      &:focus {
+        outline:none;
+      }
+    }
+    md-autocomplete, md-autocomplete-wrap {
+      height: $chip-height;
+    }
+    md-autocomplete {
+      box-shadow: none;
+      input {
+        position: relative;
+      }
+    }
+    &:not(:first-child) {
+      @include rtl(margin, $chip-margin, rtl-value($chip-margin));
+    }
+    input {
+      background:transparent;
+      border-width: 0;
+    }
+  }
+  md-autocomplete {
+    button {
+      display: none;
+    }
+  }
+}
+// IE only
+@media screen and (-ms-high-contrast: active) {
+  ._md-chip-input-container,
+  md-chip {
+    border: 1px solid #fff;
+  }
+  ._md-chip-input-container md-autocomplete {
+    border: none;
+  }
+}
+
 
 /** Styles for mdCalendar. */
 $md-calendar-cell-size: 44px !default;
@@ -2855,131 +2855,6 @@ md-divider {
     border-right-style: solid;
   }
 }
-$button-fab-width: rem(5.600) !default;
-$icon-button-margin: rem(0.600) !default;
-
-md-fab-toolbar {
-  $icon-delay: 200ms;
-
-  // Include the top/left/bottom/right fab positions
-  @include fab-all-positions();
-
-  display: block;
-
-  /*
-   * Closed styling
-   */
-  ._md-fab-toolbar-wrapper {
-    display: block;
-    position: relative;
-    overflow: hidden;
-
-    // Account for the size of the trigger plus its margin/shadow
-    height: $button-fab-width + ($icon-button-margin * 2);
-  }
-
-  md-fab-trigger {
-    position: absolute;
-    z-index: $z-index-fab;
-
-    button {
-      overflow: visible !important;
-    }
-
-    ._md-fab-toolbar-background {
-      display: block;
-      position: absolute;
-      z-index: $z-index-fab + 1;
-
-      opacity: 1;
-      transition: $swift-ease-in;
-    }
-
-    md-icon {
-      position: relative;
-      z-index: $z-index-fab + 2;
-
-      opacity: 1;
-
-      // Hide the icon very quickly
-      transition: all $icon-delay ease-in;
-    }
-  }
-
-  &.md-left {
-    md-fab-trigger {
-      @include rtl-prop(right, left, 0);
-    }
-
-    .md-toolbar-tools {
-      flex-direction: row-reverse;
-
-      > .md-button:first-child {
-        @include rtl-prop(margin-right, margin-left, 0.6rem)
-      }
-
-      > .md-button:first-child {
-        @include rtl-prop(margin-left, margin-right, -0.8rem);
-      }
-
-
-      > .md-button:last-child {
-        @include rtl-prop(margin-right, margin-left, 8px);
-      }
-
-    }
-  }
-
-  &.md-right {
-    md-fab-trigger {
-      @include rtl-prop(left, right, 0);
-    }
-
-    .md-toolbar-tools {
-      flex-direction: row;
-    }
-  }
-
-  md-toolbar {
-    background-color: transparent !important;
-    pointer-events: none;
-    z-index: $z-index-fab + 3;
-
-    .md-toolbar-tools {
-      // Fix some spacing issues with the icons and the trigger
-      padding: 0 20px;
-      margin-top: 3px;
-    }
-
-    .md-fab-action-item {
-      opacity: 0;
-      transform: scale(0);
-      transition: $swift-ease-in;
-
-      // Cut the action item's animation time in half since we delay it in the JS
-      transition-duration: $swift-ease-in-duration / 2;
-    }
-  }
-
-  /*
-   * Hover styling
-   */
-  &.md-is-open {
-    md-fab-trigger > button {
-      box-shadow: none;
-
-      md-icon {
-        opacity: 0;
-      }
-    }
-
-    .md-fab-action-item {
-      opacity: 1;
-      transform: scale(1);
-    }
-  }
-}
-
 md-fab-speed-dial {
   position: relative;
   display: flex;
@@ -3121,6 +2996,131 @@ md-fab-speed-dial {
 
       // Make the scale animation a bit faster since we are delaying each item
       transition-duration: $swift-ease-in-duration / 2.1;
+    }
+  }
+}
+
+$button-fab-width: rem(5.600) !default;
+$icon-button-margin: rem(0.600) !default;
+
+md-fab-toolbar {
+  $icon-delay: 200ms;
+
+  // Include the top/left/bottom/right fab positions
+  @include fab-all-positions();
+
+  display: block;
+
+  /*
+   * Closed styling
+   */
+  ._md-fab-toolbar-wrapper {
+    display: block;
+    position: relative;
+    overflow: hidden;
+
+    // Account for the size of the trigger plus its margin/shadow
+    height: $button-fab-width + ($icon-button-margin * 2);
+  }
+
+  md-fab-trigger {
+    position: absolute;
+    z-index: $z-index-fab;
+
+    button {
+      overflow: visible !important;
+    }
+
+    ._md-fab-toolbar-background {
+      display: block;
+      position: absolute;
+      z-index: $z-index-fab + 1;
+
+      opacity: 1;
+      transition: $swift-ease-in;
+    }
+
+    md-icon {
+      position: relative;
+      z-index: $z-index-fab + 2;
+
+      opacity: 1;
+
+      // Hide the icon very quickly
+      transition: all $icon-delay ease-in;
+    }
+  }
+
+  &.md-left {
+    md-fab-trigger {
+      @include rtl-prop(right, left, 0);
+    }
+
+    .md-toolbar-tools {
+      flex-direction: row-reverse;
+
+      > .md-button:first-child {
+        @include rtl-prop(margin-right, margin-left, 0.6rem)
+      }
+
+      > .md-button:first-child {
+        @include rtl-prop(margin-left, margin-right, -0.8rem);
+      }
+
+
+      > .md-button:last-child {
+        @include rtl-prop(margin-right, margin-left, 8px);
+      }
+
+    }
+  }
+
+  &.md-right {
+    md-fab-trigger {
+      @include rtl-prop(left, right, 0);
+    }
+
+    .md-toolbar-tools {
+      flex-direction: row;
+    }
+  }
+
+  md-toolbar {
+    background-color: transparent !important;
+    pointer-events: none;
+    z-index: $z-index-fab + 3;
+
+    .md-toolbar-tools {
+      // Fix some spacing issues with the icons and the trigger
+      padding: 0 20px;
+      margin-top: 3px;
+    }
+
+    .md-fab-action-item {
+      opacity: 0;
+      transform: scale(0);
+      transition: $swift-ease-in;
+
+      // Cut the action item's animation time in half since we delay it in the JS
+      transition-duration: $swift-ease-in-duration / 2;
+    }
+  }
+
+  /*
+   * Hover styling
+   */
+  &.md-is-open {
+    md-fab-trigger > button {
+      box-shadow: none;
+
+      md-icon {
+        opacity: 0;
+      }
+    }
+
+    .md-fab-action-item {
+      opacity: 1;
+      transform: scale(1);
     }
   }
 }
@@ -3802,6 +3802,182 @@ md-input-container {
   }
 }
 
+$menu-border-radius: 2px !default;
+$max-visible-items: 6 !default;
+$menu-item-height: 6 * $baseline-grid !default;
+$dense-menu-item-height: 4 * $baseline-grid !default;
+$max-menu-height: 2 * $baseline-grid + $max-visible-items * $menu-item-height !default;
+$max-dense-menu-height: 2 * $baseline-grid + $max-visible-items * $dense-menu-item-height !default;
+
+._md-open-menu-container {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: $z-index-menu;
+  opacity: 0;
+  border-radius: $menu-border-radius;
+
+  md-menu-divider {
+    margin-top: $baseline-grid / 2;
+    margin-bottom: $baseline-grid / 2;
+    height: 1px;
+    min-height: 1px;
+    max-height: 1px;
+    width: 100%;
+  }
+
+  md-menu-content > * {
+    opacity: 0;
+  }
+
+  // Don't let the user click something until it's animated
+  &:not(._md-clickable) {
+    pointer-events: none;
+  }
+
+  // enter: menu scales in, then list fade in.
+  &._md-active {
+    opacity: 1;
+    transition: $swift-ease-out;
+    transition-duration: 200ms;
+    > md-menu-content > * {
+      opacity: 1;
+      transition: $swift-ease-in;
+      transition-duration: 200ms;
+      transition-delay: 100ms;
+    }
+  }
+  // leave: the container fades out
+  &._md-leave {
+    opacity: 0;
+    transition: $swift-ease-in;
+    transition-duration: 250ms;
+  }
+}
+
+md-menu-content {
+  display: flex;
+  flex-direction: column;
+  padding: $baseline-grid 0;
+  max-height: $max-menu-height;
+  overflow-y: auto;
+  &.md-dense {
+    max-height: $max-dense-menu-height;
+    md-menu-item {
+      height: $dense-menu-item-height;
+      min-height: 0px;
+    }
+  }
+}
+
+md-menu-item {
+  display: flex;
+  flex-direction: row;
+  min-height: $menu-item-height;
+  height: $menu-item-height;
+  align-content: center;
+  justify-content: flex-start;
+
+  > * {
+    width: 100%;
+    margin: auto 0;
+    padding-left: 2*$baseline-grid;
+    padding-right: 2*$baseline-grid;
+  }
+
+  > .md-button {
+    border-radius: 0;
+    margin: auto 0;
+    font-size: (2*$baseline-grid) - 1;
+    text-transform: none;
+    font-weight: 400;
+    height: 100%;
+    padding-left: 2*$baseline-grid;
+    padding-right: 2*$baseline-grid;
+    @include rtl(text-align, left, right);
+    display: flex;
+    align-items: baseline;
+    align-content: flex-start;
+    width:100%;
+    md-icon {
+      @include rtl(margin, auto 2*$baseline-grid auto 0,  auto 0 auto 2*$baseline-grid);
+    }
+    p {
+      display:inline-block;
+      margin: auto;
+    }
+    span {
+      margin-top: auto;
+      margin-bottom: auto;
+    }
+    .md-ripple-container {
+      border-radius: inherit;
+    }
+  }
+}
+
+.md-menu {
+  padding: $baseline-grid 0;
+}
+
+md-toolbar {
+  .md-menu {
+    height: auto;
+    margin: auto;
+    padding: 0;
+  }
+}
+
+@media (max-width: $layout-breakpoint-sm - 1) {
+  md-menu-content {
+    min-width: 112px;
+  }
+  @for $i from 3 through 7 {
+    md-menu-content[width="#{$i}"] {
+      min-width: $i * 56px;
+    }
+  }
+}
+
+@media (min-width: $layout-breakpoint-sm) {
+  md-menu-content {
+    min-width: 96px;
+  }
+  @for $i from 3 through 7 {
+    md-menu-content[width="#{$i}"] {
+      min-width: $i * 64px;
+    }
+  }
+}
+
+
+$progress-circular-indeterminate-duration: 2.9s !default;
+
+@keyframes indeterminate-rotate {
+    0%       { transform: rotate(0deg); }
+    100%     { transform: rotate(360deg); }
+}
+
+// Used to avoid unnecessary layout
+md-progress-circular {
+    position: relative;
+
+    &._md-progress-circular-disabled {
+        visibility: hidden;
+    }
+
+    &._md-mode-indeterminate svg {
+        animation: indeterminate-rotate $progress-circular-indeterminate-duration linear infinite;
+    }
+
+    svg {
+        position: absolute;
+        overflow: visible;
+        top: 0;
+        left: 0;
+    }
+}
+
 $dense-baseline-grid: $baseline-grid / 2 !default;
 
 $list-h3-margin: 0 0 0px 0 !default;
@@ -4218,392 +4394,6 @@ md-list-item {
   }
 }
 
-$menu-border-radius: 2px !default;
-$max-visible-items: 6 !default;
-$menu-item-height: 6 * $baseline-grid !default;
-$dense-menu-item-height: 4 * $baseline-grid !default;
-$max-menu-height: 2 * $baseline-grid + $max-visible-items * $menu-item-height !default;
-$max-dense-menu-height: 2 * $baseline-grid + $max-visible-items * $dense-menu-item-height !default;
-
-._md-open-menu-container {
-  position: fixed;
-  left: 0;
-  top: 0;
-  z-index: $z-index-menu;
-  opacity: 0;
-  border-radius: $menu-border-radius;
-
-  md-menu-divider {
-    margin-top: $baseline-grid / 2;
-    margin-bottom: $baseline-grid / 2;
-    height: 1px;
-    min-height: 1px;
-    max-height: 1px;
-    width: 100%;
-  }
-
-  md-menu-content > * {
-    opacity: 0;
-  }
-
-  // Don't let the user click something until it's animated
-  &:not(._md-clickable) {
-    pointer-events: none;
-  }
-
-  // enter: menu scales in, then list fade in.
-  &._md-active {
-    opacity: 1;
-    transition: $swift-ease-out;
-    transition-duration: 200ms;
-    > md-menu-content > * {
-      opacity: 1;
-      transition: $swift-ease-in;
-      transition-duration: 200ms;
-      transition-delay: 100ms;
-    }
-  }
-  // leave: the container fades out
-  &._md-leave {
-    opacity: 0;
-    transition: $swift-ease-in;
-    transition-duration: 250ms;
-  }
-}
-
-md-menu-content {
-  display: flex;
-  flex-direction: column;
-  padding: $baseline-grid 0;
-  max-height: $max-menu-height;
-  overflow-y: auto;
-  &.md-dense {
-    max-height: $max-dense-menu-height;
-    md-menu-item {
-      height: $dense-menu-item-height;
-      min-height: 0px;
-    }
-  }
-}
-
-md-menu-item {
-  display: flex;
-  flex-direction: row;
-  min-height: $menu-item-height;
-  height: $menu-item-height;
-  align-content: center;
-  justify-content: flex-start;
-
-  > * {
-    width: 100%;
-    margin: auto 0;
-    padding-left: 2*$baseline-grid;
-    padding-right: 2*$baseline-grid;
-  }
-
-  > .md-button {
-    border-radius: 0;
-    margin: auto 0;
-    font-size: (2*$baseline-grid) - 1;
-    text-transform: none;
-    font-weight: 400;
-    height: 100%;
-    padding-left: 2*$baseline-grid;
-    padding-right: 2*$baseline-grid;
-    @include rtl(text-align, left, right);
-    display: flex;
-    align-items: baseline;
-    align-content: flex-start;
-    width:100%;
-    md-icon {
-      @include rtl(margin, auto 2*$baseline-grid auto 0,  auto 0 auto 2*$baseline-grid);
-    }
-    p {
-      display:inline-block;
-      margin: auto;
-    }
-    span {
-      margin-top: auto;
-      margin-bottom: auto;
-    }
-    .md-ripple-container {
-      border-radius: inherit;
-    }
-  }
-}
-
-.md-menu {
-  padding: $baseline-grid 0;
-}
-
-md-toolbar {
-  .md-menu {
-    height: auto;
-    margin: auto;
-    padding: 0;
-  }
-}
-
-@media (max-width: $layout-breakpoint-sm - 1) {
-  md-menu-content {
-    min-width: 112px;
-  }
-  @for $i from 3 through 7 {
-    md-menu-content[width="#{$i}"] {
-      min-width: $i * 56px;
-    }
-  }
-}
-
-@media (min-width: $layout-breakpoint-sm) {
-  md-menu-content {
-    min-width: 96px;
-  }
-  @for $i from 3 through 7 {
-    md-menu-content[width="#{$i}"] {
-      min-width: $i * 64px;
-    }
-  }
-}
-
-
-$progress-circular-indeterminate-duration: 2.9s !default;
-
-@keyframes indeterminate-rotate {
-    0%       { transform: rotate(0deg); }
-    100%     { transform: rotate(360deg); }
-}
-
-// Used to avoid unnecessary layout
-md-progress-circular {
-    position: relative;
-
-    &._md-progress-circular-disabled {
-        visibility: hidden;
-    }
-
-    &._md-mode-indeterminate svg {
-        animation: indeterminate-rotate $progress-circular-indeterminate-duration linear infinite;
-    }
-
-    svg {
-        position: absolute;
-        overflow: visible;
-        top: 0;
-        left: 0;
-    }
-}
-
-$progress-linear-bar-height: 5px !default;
-
-md-progress-linear {
-  display: block;
-  position: relative;
-  width: 100%;
-  height: $progress-linear-bar-height;
-
-  padding-top: 0 !important;
-  margin-bottom: 0 !important;
-
-  &._md-progress-linear-disabled {
-    visibility: hidden;
-  }
-
-  ._md-container {
-    display:block;
-    position: relative;
-    overflow: hidden;
-
-    width:100%;
-    height: $progress-linear-bar-height;
-
-    transform: translate(0, 0) scale(1, 1);
-
-    ._md-bar {
-      position: absolute;
-
-      left: 0;
-      top: 0;
-      bottom: 0;
-
-      width: 100%;
-      height: $progress-linear-bar-height;
-    }
-
-    ._md-dashed:before {
-      content: "";
-      display: none;
-      position: absolute;
-
-      margin-top: 0;
-      height: $progress-linear-bar-height;
-      width: 100%;
-
-      background-color: transparent;
-      background-size: 10px 10px !important;
-      background-position: 0px -23px;
-    }
-
-    ._md-bar1, ._md-bar2 {
-
-      // Just set the transition information here.
-      // Note: the actual transform values are calculated in JS
-
-      transition: transform 0.2s linear;
-    }
-
-    // ************************************************************
-    // Animations for modes: Determinate, InDeterminate, and Query
-    // ************************************************************
-
-    &._md-mode-query {
-        ._md-bar1 {
-          display: none;
-        }
-        ._md-bar2 {
-          transition: all 0.2s linear;
-          animation: query .8s infinite cubic-bezier(0.390, 0.575, 0.565, 1.000);
-        }
-      }
-
-    &._md-mode-determinate {
-      ._md-bar1 {
-        display: none;
-      }
-    }
-
-    &._md-mode-indeterminate {
-      ._md-bar1 {
-        animation: md-progress-linear-indeterminate-scale-1 4s infinite,
-                   md-progress-linear-indeterminate-1 4s infinite;
-      }
-      ._md-bar2 {
-        animation: md-progress-linear-indeterminate-scale-2 4s infinite,
-                   md-progress-linear-indeterminate-2 4s infinite;
-      }
-    }
-
-    &.ng-hide
-    ._md-progress-linear-disabled & {
-      animation: none;
-
-      ._md-bar1 {
-        animation-name: none;
-      }
-      ._md-bar2 {
-        animation-name: none;
-      }
-    }
-  }
-
-  // Special animations for the `buffer` mode
-
-  ._md-container._md-mode-buffer {
-    background-color: transparent !important;
-
-    transition: all 0.2s linear;
-
-    ._md-dashed:before {
-      display: block;
-      animation: buffer 3s infinite linear;
-    }
-  }
-}
-
-@keyframes query {
-  0% {
-    opacity: 1;
-    transform: translateX(35%) scale(.3, 1);
-  }
-  100% {
-    opacity: 0;
-    transform: translateX(-50%) scale(0, 1);
-  }
-}
-@keyframes buffer {
-  0% {
-    opacity: 1;
-    background-position: 0px -23px;
-  }
-  50% {
-    opacity: 0;
-  }
-  100% {
-    opacity: 1;
-    background-position: -200px -23px;
-  }
-}
-@keyframes md-progress-linear-indeterminate-scale-1 {
-  0% {
-    transform: scaleX(0.1);
-    animation-timing-function: linear;
-  }
-  36.6% {
-    transform: scaleX(0.1);
-    animation-timing-function: cubic-bezier(0.334731432, 0.124819821, 0.785843996, 1);
-  }
-  69.15% {
-    transform: scaleX(0.83);
-    animation-timing-function: cubic-bezier(0.225732004, 0, 0.233648906, 1.3709798);
-  }
-  100% {
-    transform: scaleX(0.1);
-  }
-}
-@keyframes md-progress-linear-indeterminate-1 {
-  0% {
-    left: -378.6 * 100% / 360;
-    animation-timing-function: linear;
-  }
-  20% {
-    left: -378.6 * 100% / 360;
-    animation-timing-function: cubic-bezier(0.5, 0, 0.701732, 0.495818703);
-  }
-  69.15% {
-    left: 77.4 * 100% / 360;
-    animation-timing-function: cubic-bezier(0.302435, 0.38135197, 0.55, 0.956352125);
-  }
-  100% {
-    left: 343.6 * 100% / 360;
-  }
-}
-@keyframes md-progress-linear-indeterminate-scale-2 {
-  0% {
-    transform: scaleX(0.1);
-    animation-timing-function: cubic-bezier(0.205028172, 0.057050836, 0.57660995, 0.453970841);
-  }
-  19.15% {
-    transform: scaleX(0.57);
-    animation-timing-function: cubic-bezier(0.152312994, 0.196431957, 0.648373778, 1.00431535);
-  }
-  44.15% {
-    transform: scaleX(0.91);
-    animation-timing-function: cubic-bezier(0.25775882, -0.003163357, 0.211761916, 1.38178961);
-  }
-  100% {
-    transform: scaleX(0.1);
-  }
-}
-@keyframes md-progress-linear-indeterminate-2 {
-  0% {
-    left: -197.6 * 100% / 360;
-    animation-timing-function: cubic-bezier(0.15, 0, 0.5150584, 0.409684966);
-  }
-  25% {
-    left: -62.1 * 100% / 360;
-    animation-timing-function: cubic-bezier(0.3103299, 0.284057684, 0.8, 0.733718979);
-  }
-  48.35% {
-    left: 106.2 * 100% / 360;
-    animation-timing-function: cubic-bezier(0.4, 0.627034903, 0.6, 0.902025796);
-  }
-  100% {
-    left: 422.6 * 100% / 360;
-  }
-}
-
-
-
 md-toolbar.md-menu-toolbar {
   h2.md-toolbar-tools {
     line-height: 1rem;
@@ -4695,180 +4485,6 @@ md-menu-content._md-menu-bar-menu.md-dense {
         @include rtl-prop(right, left, 3.5 * $baseline-grid);
       }
     }
-  }
-}
-
-$radio-width: 20px !default;
-$radio-height: $radio-width !default;
-$radio-text-margin: 10px !default;
-$radio-top-left: 12px !default;
-$radio-margin: 16px !default;
-
-md-radio-button {
-  box-sizing: border-box;
-  display: block;
-  margin-bottom: $radio-margin;
-  white-space: nowrap;
-  cursor: pointer;
-  position: relative;
-
-  // disabled
-  &[disabled] {
-    cursor: default;
-
-    ._md-container {
-      cursor: default;
-    }
-  }
-
-  ._md-container {
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    box-sizing: border-box;
-    display: inline-block;
-    width: $radio-width;
-    height: $radio-width;
-    cursor: pointer;
-    @include rtl(left, 0, auto);
-    @include rtl(right, auto, 0);
-
-    .md-ripple-container {
-      position: absolute;
-      display: block;
-      width: auto;
-      height: auto;
-      left: -15px;
-      top: -15px;
-      right: -15px;
-      bottom: -15px;
-    }
-
-    &:before {
-      box-sizing: border-box;
-      background-color: transparent;
-      border-radius: 50%;
-      content: '';
-      position: absolute;
-      display: block;
-      height: auto;
-      left: 0;
-      top: 0;
-      right: 0;
-      bottom: 0;
-      transition: all 0.5s;
-      width: auto;
-    }
-  }
-
-  &.md-align-top-left > div._md-container {
-     top: $radio-top-left;
-   }
-
-  ._md-off {
-    box-sizing: border-box;
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: $radio-width;
-    height: $radio-width;
-    border-style: solid;
-    border-width: 2px;
-    border-radius: 50%;
-    transition: border-color ease 0.28s;
-  }
-
-  ._md-on {
-    box-sizing: border-box;
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: $radio-width;
-    height: $radio-width;
-    border-radius: 50%;
-    transition: transform ease 0.28s;
-    transform: scale(0);
-  }
-
-  &.md-checked ._md-on {
-    transform: scale(0.50);
-  }
-
-  ._md-label {
-    box-sizing: border-box;
-    position: relative;
-    display: inline-block;
-
-    @include rtl(margin-left, $radio-text-margin + $radio-width, 0);
-    @include rtl(margin-right, 0, $radio-text-margin + $radio-width);
-
-    vertical-align: middle;
-    white-space: normal;
-    pointer-events: none;
-    width: auto;
-  }
-}
-
-md-radio-group {
-  &.layout-column,
-  &.layout-xs-column, &.layout-gt-xs-column,
-  &.layout-sm-column, &.layout-gt-sm-column,
-  &.layout-md-column, &.layout-gt-md-column,
-  &.layout-lg-column, &.layout-gt-lg-column,
-  &.layout-xl-column {
-    md-radio-button {
-      margin-bottom: $radio-margin;
-    }
-  }
-
-  &.layout-row,
-  &.layout-xs-row, &.layout-gt-xs-row,
-  &.layout-sm-row, &.layout-gt-sm-row,
-  &.layout-md-row, &.layout-gt-md-row,
-  &.layout-lg-row, &.layout-gt-lg-row,
-  &.layout-xl-row {
-    md-radio-button {
-      margin-top: 0;
-      margin-bottom: 0;
-      @include rtl(margin-left, 0, $radio-margin);
-      @include rtl(margin-right, $radio-margin, 0);
-
-      &:last-of-type {
-        margin-left: 0;
-        margin-right: 0;
-      }
-    }
-  }
-  &:focus {
-    outline: none;
-  }
-  &.md-focused {
-    .md-checked ._md-container:before {
-      left: -8px;
-      top: -8px;
-      right: -8px;
-      bottom: -8px;
-    }
-  }
-}
-
-.md-inline-form {
-  md-radio-group {
-    margin: 18px 0 19px;
-    md-radio-button {
-      display: inline-block;
-      height: 30px;
-      padding: 2px;
-      box-sizing: border-box;
-      margin-top: 0;
-      margin-bottom: 0;
-    }
-  }
-}
-
-@media screen and (-ms-high-contrast: active) {
-  md-radio-button.md-default-theme ._md-on {
-    background-color: #fff;
   }
 }
 
@@ -5978,6 +5594,390 @@ md-switch {
     background-color: #9E9E9E;
   }
   md-switch.md-default-theme ._md-thumb {
+    background-color: #fff;
+  }
+}
+
+$progress-linear-bar-height: 5px !default;
+
+md-progress-linear {
+  display: block;
+  position: relative;
+  width: 100%;
+  height: $progress-linear-bar-height;
+
+  padding-top: 0 !important;
+  margin-bottom: 0 !important;
+
+  &._md-progress-linear-disabled {
+    visibility: hidden;
+  }
+
+  ._md-container {
+    display:block;
+    position: relative;
+    overflow: hidden;
+
+    width:100%;
+    height: $progress-linear-bar-height;
+
+    transform: translate(0, 0) scale(1, 1);
+
+    ._md-bar {
+      position: absolute;
+
+      left: 0;
+      top: 0;
+      bottom: 0;
+
+      width: 100%;
+      height: $progress-linear-bar-height;
+    }
+
+    ._md-dashed:before {
+      content: "";
+      display: none;
+      position: absolute;
+
+      margin-top: 0;
+      height: $progress-linear-bar-height;
+      width: 100%;
+
+      background-color: transparent;
+      background-size: 10px 10px !important;
+      background-position: 0px -23px;
+    }
+
+    ._md-bar1, ._md-bar2 {
+
+      // Just set the transition information here.
+      // Note: the actual transform values are calculated in JS
+
+      transition: transform 0.2s linear;
+    }
+
+    // ************************************************************
+    // Animations for modes: Determinate, InDeterminate, and Query
+    // ************************************************************
+
+    &._md-mode-query {
+        ._md-bar1 {
+          display: none;
+        }
+        ._md-bar2 {
+          transition: all 0.2s linear;
+          animation: query .8s infinite cubic-bezier(0.390, 0.575, 0.565, 1.000);
+        }
+      }
+
+    &._md-mode-determinate {
+      ._md-bar1 {
+        display: none;
+      }
+    }
+
+    &._md-mode-indeterminate {
+      ._md-bar1 {
+        animation: md-progress-linear-indeterminate-scale-1 4s infinite,
+                   md-progress-linear-indeterminate-1 4s infinite;
+      }
+      ._md-bar2 {
+        animation: md-progress-linear-indeterminate-scale-2 4s infinite,
+                   md-progress-linear-indeterminate-2 4s infinite;
+      }
+    }
+
+    &.ng-hide
+    ._md-progress-linear-disabled & {
+      animation: none;
+
+      ._md-bar1 {
+        animation-name: none;
+      }
+      ._md-bar2 {
+        animation-name: none;
+      }
+    }
+  }
+
+  // Special animations for the `buffer` mode
+
+  ._md-container._md-mode-buffer {
+    background-color: transparent !important;
+
+    transition: all 0.2s linear;
+
+    ._md-dashed:before {
+      display: block;
+      animation: buffer 3s infinite linear;
+    }
+  }
+}
+
+@keyframes query {
+  0% {
+    opacity: 1;
+    transform: translateX(35%) scale(.3, 1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-50%) scale(0, 1);
+  }
+}
+@keyframes buffer {
+  0% {
+    opacity: 1;
+    background-position: 0px -23px;
+  }
+  50% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+    background-position: -200px -23px;
+  }
+}
+@keyframes md-progress-linear-indeterminate-scale-1 {
+  0% {
+    transform: scaleX(0.1);
+    animation-timing-function: linear;
+  }
+  36.6% {
+    transform: scaleX(0.1);
+    animation-timing-function: cubic-bezier(0.334731432, 0.124819821, 0.785843996, 1);
+  }
+  69.15% {
+    transform: scaleX(0.83);
+    animation-timing-function: cubic-bezier(0.225732004, 0, 0.233648906, 1.3709798);
+  }
+  100% {
+    transform: scaleX(0.1);
+  }
+}
+@keyframes md-progress-linear-indeterminate-1 {
+  0% {
+    left: -378.6 * 100% / 360;
+    animation-timing-function: linear;
+  }
+  20% {
+    left: -378.6 * 100% / 360;
+    animation-timing-function: cubic-bezier(0.5, 0, 0.701732, 0.495818703);
+  }
+  69.15% {
+    left: 77.4 * 100% / 360;
+    animation-timing-function: cubic-bezier(0.302435, 0.38135197, 0.55, 0.956352125);
+  }
+  100% {
+    left: 343.6 * 100% / 360;
+  }
+}
+@keyframes md-progress-linear-indeterminate-scale-2 {
+  0% {
+    transform: scaleX(0.1);
+    animation-timing-function: cubic-bezier(0.205028172, 0.057050836, 0.57660995, 0.453970841);
+  }
+  19.15% {
+    transform: scaleX(0.57);
+    animation-timing-function: cubic-bezier(0.152312994, 0.196431957, 0.648373778, 1.00431535);
+  }
+  44.15% {
+    transform: scaleX(0.91);
+    animation-timing-function: cubic-bezier(0.25775882, -0.003163357, 0.211761916, 1.38178961);
+  }
+  100% {
+    transform: scaleX(0.1);
+  }
+}
+@keyframes md-progress-linear-indeterminate-2 {
+  0% {
+    left: -197.6 * 100% / 360;
+    animation-timing-function: cubic-bezier(0.15, 0, 0.5150584, 0.409684966);
+  }
+  25% {
+    left: -62.1 * 100% / 360;
+    animation-timing-function: cubic-bezier(0.3103299, 0.284057684, 0.8, 0.733718979);
+  }
+  48.35% {
+    left: 106.2 * 100% / 360;
+    animation-timing-function: cubic-bezier(0.4, 0.627034903, 0.6, 0.902025796);
+  }
+  100% {
+    left: 422.6 * 100% / 360;
+  }
+}
+
+
+
+$radio-width: 20px !default;
+$radio-height: $radio-width !default;
+$radio-text-margin: 10px !default;
+$radio-top-left: 12px !default;
+$radio-margin: 16px !default;
+
+md-radio-button {
+  box-sizing: border-box;
+  display: block;
+  margin-bottom: $radio-margin;
+  white-space: nowrap;
+  cursor: pointer;
+  position: relative;
+
+  // disabled
+  &[disabled] {
+    cursor: default;
+
+    ._md-container {
+      cursor: default;
+    }
+  }
+
+  ._md-container {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    box-sizing: border-box;
+    display: inline-block;
+    width: $radio-width;
+    height: $radio-width;
+    cursor: pointer;
+    @include rtl(left, 0, auto);
+    @include rtl(right, auto, 0);
+
+    .md-ripple-container {
+      position: absolute;
+      display: block;
+      width: auto;
+      height: auto;
+      left: -15px;
+      top: -15px;
+      right: -15px;
+      bottom: -15px;
+    }
+
+    &:before {
+      box-sizing: border-box;
+      background-color: transparent;
+      border-radius: 50%;
+      content: '';
+      position: absolute;
+      display: block;
+      height: auto;
+      left: 0;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      transition: all 0.5s;
+      width: auto;
+    }
+  }
+
+  &.md-align-top-left > div._md-container {
+     top: $radio-top-left;
+   }
+
+  ._md-off {
+    box-sizing: border-box;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: $radio-width;
+    height: $radio-width;
+    border-style: solid;
+    border-width: 2px;
+    border-radius: 50%;
+    transition: border-color ease 0.28s;
+  }
+
+  ._md-on {
+    box-sizing: border-box;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: $radio-width;
+    height: $radio-width;
+    border-radius: 50%;
+    transition: transform ease 0.28s;
+    transform: scale(0);
+  }
+
+  &.md-checked ._md-on {
+    transform: scale(0.50);
+  }
+
+  ._md-label {
+    box-sizing: border-box;
+    position: relative;
+    display: inline-block;
+
+    @include rtl(margin-left, $radio-text-margin + $radio-width, 0);
+    @include rtl(margin-right, 0, $radio-text-margin + $radio-width);
+
+    vertical-align: middle;
+    white-space: normal;
+    pointer-events: none;
+    width: auto;
+  }
+}
+
+md-radio-group {
+  &.layout-column,
+  &.layout-xs-column, &.layout-gt-xs-column,
+  &.layout-sm-column, &.layout-gt-sm-column,
+  &.layout-md-column, &.layout-gt-md-column,
+  &.layout-lg-column, &.layout-gt-lg-column,
+  &.layout-xl-column {
+    md-radio-button {
+      margin-bottom: $radio-margin;
+    }
+  }
+
+  &.layout-row,
+  &.layout-xs-row, &.layout-gt-xs-row,
+  &.layout-sm-row, &.layout-gt-sm-row,
+  &.layout-md-row, &.layout-gt-md-row,
+  &.layout-lg-row, &.layout-gt-lg-row,
+  &.layout-xl-row {
+    md-radio-button {
+      margin-top: 0;
+      margin-bottom: 0;
+      @include rtl(margin-left, 0, $radio-margin);
+      @include rtl(margin-right, $radio-margin, 0);
+
+      &:last-of-type {
+        margin-left: 0;
+        margin-right: 0;
+      }
+    }
+  }
+  &:focus {
+    outline: none;
+  }
+  &.md-focused {
+    .md-checked ._md-container:before {
+      left: -8px;
+      top: -8px;
+      right: -8px;
+      bottom: -8px;
+    }
+  }
+}
+
+.md-inline-form {
+  md-radio-group {
+    margin: 18px 0 19px;
+    md-radio-button {
+      display: inline-block;
+      height: 30px;
+      padding: 2px;
+      box-sizing: border-box;
+      margin-top: 0;
+      margin-bottom: 0;
+    }
+  }
+}
+
+@media screen and (-ms-high-contrast: active) {
+  md-radio-button.md-default-theme ._md-on {
     background-color: #fff;
   }
 }
