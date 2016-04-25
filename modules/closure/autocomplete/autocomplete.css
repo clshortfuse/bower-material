@@ -93,7 +93,9 @@ md-autocomplete {
     md-autocomplete md-autocomplete-wrap.md-menu-showing {
       z-index: 51; }
     md-autocomplete md-autocomplete-wrap md-input-container.md-input-has-messages md-progress-linear.md-inline {
-      bottom: 16px; }
+      bottom: 18px; }
+    md-autocomplete md-autocomplete-wrap md-input-container.md-input-has-messages.md-dense md-progress-linear.md-inline {
+      bottom: 20px; }
     md-autocomplete md-autocomplete-wrap md-progress-linear {
       position: absolute;
       bottom: -2px;

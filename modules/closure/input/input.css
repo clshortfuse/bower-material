@@ -38,13 +38,16 @@ md-input-container {
     min-height: 8px;
     min-width: 1px;
     margin-top: 4px; }
-    md-input-container.md-input-has-messages .md-errors-spacer:empty {
-      display: none; }
   md-input-container > md-icon {
     position: absolute;
+    top: 10px;
+    margin-top: 2px;
     left: 0;
-    top: 50%;
-    margin-top: -12px; }
+    right: auto; }
+    [dir=rtl] md-input-container > md-icon {
+      left: auto; }
+    [dir=rtl] md-input-container > md-icon {
+      right: 0; }
   md-input-container textarea,
   md-input-container input[type="text"],
   md-input-container input[type="password"],
@@ -73,7 +76,6 @@ md-input-container {
     md-input-container textarea.md-input {
       padding-bottom: 2px;
       margin-bottom: 9px;
-      box-sizing: content-box;
       -ms-flex-preferred-size: auto; }
     md-input-container textarea._md-textarea-scrollable, md-input-container textarea[md-no-autogrow] {
       overflow: auto; }
@@ -81,13 +83,7 @@ md-input-container {
       height: auto; }
   md-input-container label:not(._md-container-ignore) {
     position: absolute;
-    font-size: 12px;
-    left: 0;
-    right: auto; }
-    [dir=rtl] md-input-container label:not(._md-container-ignore) {
-      left: auto; }
-    [dir=rtl] md-input-container label:not(._md-container-ignore) {
-      right: 0; }
+    font-size: 12px; }
     md-input-container label:not(._md-container-ignore).md-required:after {
       content: ' *';
       font-size: 13px;
@@ -162,16 +158,21 @@ md-input-container {
     padding-top: 0px;
     padding-bottom: 7px;
     border-width: 0 0 1px 0;
+    font-size: inherit;
     line-height: normal;
-    height: auto;
     -ms-flex-preferred-size: auto;
     border-radius: 0;
     border-style: solid;
     width: 100%;
-    box-sizing: border-box;
-    float: left; }
+    float: left;
+    padding-left: 1px;
+    padding-right: 0; }
     [dir=rtl] md-input-container .md-input {
       float: right; }
+    [dir=rtl] md-input-container .md-input {
+      padding-left: 0; }
+    [dir=rtl] md-input-container .md-input {
+      padding-right: 1px; }
     md-input-container .md-input:focus {
       outline: none; }
     md-input-container .md-input:invalid {
@@ -312,12 +313,12 @@ md-input-container {
         right: auto; }
       [dir=rtl] md-input-container.md-icon-right > md-icon:last-of-type {
         left: 2px; }
-    md-input-container.md-icon-right:last-of-type {
+    md-input-container.md-icon-right:last-child {
       padding-left: 0;
       padding-right: 56px; }
-      [dir=rtl] md-input-container.md-icon-right:last-of-type {
+      [dir=rtl] md-input-container.md-icon-right:last-child {
         padding-left: 56px; }
-      [dir=rtl] md-input-container.md-icon-right:last-of-type {
+      [dir=rtl] md-input-container.md-icon-right:last-child {
         padding-right: 0; }
   md-input-container.md-icon-left.md-icon-right {
     padding-left: 56px;
@@ -335,6 +336,8 @@ md-input-container {
     margin-top: 14px; }
   md-input-container.md-input-has-messages .md-input {
     margin-bottom: 4px; }
+  md-input-container.md-input-has-label > md-icon {
+    top: 34px; }
   md-input-container.md-input-has-label .md-input {
     margin-top: 34px; }
   md-input-container.md-input-has-label.md-input-focused input[type="date"].md-input,
@@ -348,9 +351,6 @@ md-input-container {
   md-input-container.md-input-has-label .md-input.ng-invalid.ng-dirty input[type="time"].md-input,
   md-input-container.md-input-has-label .md-input.ng-invalid.ng-dirty input[type="week"].md-input {
     padding-bottom: 4px; }
-  md-input-container.md-input-has-label.md-input-focused textarea.md-input,
-  md-input-container.md-input-has-label .md-input.ng-invalid.ng-dirty textarea.md-input {
-    padding-bottom: 9px; }
   md-input-container.md-input-has-label input[type="date"].md-input,
   md-input-container.md-input-has-label input[type="datetime-local"].md-input,
   md-input-container.md-input-has-label input[type="month"].md-input,
@@ -360,14 +360,166 @@ md-input-container {
     padding-bottom: 5px; }
   md-input-container.md-input-has-label textarea.md-input {
     margin-top: 32px;
-    padding-bottom: 9px;
-    box-sizing: border-box;
+    padding-bottom: 4px;
     padding-right: 8px;
     padding-left: 0; }
     [dir=rtl] md-input-container.md-input-has-label textarea.md-input {
       padding-right: 0; }
     [dir=rtl] md-input-container.md-input-has-label textarea.md-input {
       padding-left: 8px; }
+
+.md-dense input-container,
+md-input-container.md-dense {
+  min-height: 40px; }
+  .md-dense input-container label:not(.md-no-float):not(._md-container-ignore),
+  .md-dense input-container ._md-placeholder,
+  md-input-container.md-dense label:not(.md-no-float):not(._md-container-ignore),
+  md-input-container.md-dense ._md-placeholder {
+    margin-top: 8px;
+    font-size: 13px; }
+  .md-dense input-container .md-input,
+  md-input-container.md-dense .md-input {
+    margin-top: 8px;
+    margin-bottom: 9px;
+    font-size: 13px; }
+  .md-dense input-container.md-input-has-messages .md-input,
+  md-input-container.md-dense.md-input-has-messages .md-input {
+    margin-bottom: 5px; }
+  .md-dense input-container.md-input-has-messages .md-input-errors-spacer,
+  md-input-container.md-dense.md-input-has-messages .md-input-errors-spacer {
+    margin-top: 0; }
+  .md-dense input-container.md-input-has-messages [ng-messages],
+  .md-dense input-container.md-input-has-messages .md-input-messages-animation,
+  md-input-container.md-dense.md-input-has-messages [ng-messages],
+  md-input-container.md-dense.md-input-has-messages .md-input-messages-animation {
+    padding-top: 0; }
+  .md-dense input-container > md-icon,
+  md-input-container.md-dense > md-icon {
+    top: 8px;
+    margin-top: 1.66667px;
+    font-size: 20px;
+    height: 20px;
+    width: 20px;
+    min-height: 20px;
+    min-width: 20px; }
+  .md-dense input-container.md-input-has-label,
+  md-input-container.md-dense.md-input-has-label {
+    min-height: 60px; }
+    .md-dense input-container.md-input-has-label > md-icon,
+    md-input-container.md-dense.md-input-has-label > md-icon {
+      top: 28px; }
+    .md-dense input-container.md-input-has-label .md-input,
+    md-input-container.md-dense.md-input-has-label .md-input {
+      margin-top: 28px; }
+    .md-dense input-container.md-input-has-label input[type="date"].md-input,
+    .md-dense input-container.md-input-has-label input[type="datetime-local"].md-input,
+    .md-dense input-container.md-input-has-label input[type="month"].md-input,
+    .md-dense input-container.md-input-has-label input[type="time"].md-input,
+    .md-dense input-container.md-input-has-label input[type="week"].md-input,
+    md-input-container.md-dense.md-input-has-label input[type="date"].md-input,
+    md-input-container.md-dense.md-input-has-label input[type="datetime-local"].md-input,
+    md-input-container.md-dense.md-input-has-label input[type="month"].md-input,
+    md-input-container.md-dense.md-input-has-label input[type="time"].md-input,
+    md-input-container.md-dense.md-input-has-label input[type="week"].md-input {
+      margin-top: 25px; }
+  .md-dense input-container.md-icon-left > label:not(.md-no-float):not(._md-container-ignore),
+  .md-dense input-container.md-icon-left > label .md-placeholder, .md-dense input-container.md-icon-right > label:not(.md-no-float):not(._md-container-ignore),
+  .md-dense input-container.md-icon-right > label .md-placeholder,
+  md-input-container.md-dense.md-icon-left > label:not(.md-no-float):not(._md-container-ignore),
+  md-input-container.md-dense.md-icon-left > label .md-placeholder,
+  md-input-container.md-dense.md-icon-right > label:not(.md-no-float):not(._md-container-ignore),
+  md-input-container.md-dense.md-icon-right > label .md-placeholder {
+    width: calc(100% - 48px - 16px); }
+  .md-dense input-container.md-icon-left.md-input-focused > label:not(.md-no-float):not(._md-container-ignore),
+  .md-dense input-container.md-icon-left.md-input-focused > label .md-placeholder, .md-dense input-container.md-icon-left.md-input-has-placeholder > label:not(.md-no-float):not(._md-container-ignore),
+  .md-dense input-container.md-icon-left.md-input-has-placeholder > label .md-placeholder, .md-dense input-container.md-icon-left.md-input-has-value > label:not(.md-no-float):not(._md-container-ignore),
+  .md-dense input-container.md-icon-left.md-input-has-value > label .md-placeholder, .md-dense input-container.md-icon-right.md-input-focused > label:not(.md-no-float):not(._md-container-ignore),
+  .md-dense input-container.md-icon-right.md-input-focused > label .md-placeholder, .md-dense input-container.md-icon-right.md-input-has-placeholder > label:not(.md-no-float):not(._md-container-ignore),
+  .md-dense input-container.md-icon-right.md-input-has-placeholder > label .md-placeholder, .md-dense input-container.md-icon-right.md-input-has-value > label:not(.md-no-float):not(._md-container-ignore),
+  .md-dense input-container.md-icon-right.md-input-has-value > label .md-placeholder,
+  md-input-container.md-dense.md-icon-left.md-input-focused > label:not(.md-no-float):not(._md-container-ignore),
+  md-input-container.md-dense.md-icon-left.md-input-focused > label .md-placeholder,
+  md-input-container.md-dense.md-icon-left.md-input-has-placeholder > label:not(.md-no-float):not(._md-container-ignore),
+  md-input-container.md-dense.md-icon-left.md-input-has-placeholder > label .md-placeholder,
+  md-input-container.md-dense.md-icon-left.md-input-has-value > label:not(.md-no-float):not(._md-container-ignore),
+  md-input-container.md-dense.md-icon-left.md-input-has-value > label .md-placeholder,
+  md-input-container.md-dense.md-icon-right.md-input-focused > label:not(.md-no-float):not(._md-container-ignore),
+  md-input-container.md-dense.md-icon-right.md-input-focused > label .md-placeholder,
+  md-input-container.md-dense.md-icon-right.md-input-has-placeholder > label:not(.md-no-float):not(._md-container-ignore),
+  md-input-container.md-dense.md-icon-right.md-input-has-placeholder > label .md-placeholder,
+  md-input-container.md-dense.md-icon-right.md-input-has-value > label:not(.md-no-float):not(._md-container-ignore),
+  md-input-container.md-dense.md-icon-right.md-input-has-value > label .md-placeholder {
+    width: calc((100% - 48px - 16px) / 1); }
+  .md-dense input-container.md-icon-left,
+  md-input-container.md-dense.md-icon-left {
+    padding-left: 48px;
+    padding-right: 16px; }
+    [dir=rtl] .md-dense input-container.md-icon-left, [dir=rtl]
+    md-input-container.md-dense.md-icon-left {
+      padding-left: 16px; }
+    [dir=rtl] .md-dense input-container.md-icon-left, [dir=rtl]
+    md-input-container.md-dense.md-icon-left {
+      padding-right: 48px; }
+    .md-dense input-container.md-icon-left > label,
+    md-input-container.md-dense.md-icon-left > label {
+      left: 48px;
+      right: auto; }
+      [dir=rtl] .md-dense input-container.md-icon-left > label, [dir=rtl]
+      md-input-container.md-dense.md-icon-left > label {
+        left: auto; }
+      [dir=rtl] .md-dense input-container.md-icon-left > label, [dir=rtl]
+      md-input-container.md-dense.md-icon-left > label {
+        right: 48px; }
+    .md-dense input-container.md-icon-left:last-of-type,
+    md-input-container.md-dense.md-icon-left:last-of-type {
+      padding-left: 48px;
+      padding-right: 0; }
+      [dir=rtl] .md-dense input-container.md-icon-left:last-of-type, [dir=rtl]
+      md-input-container.md-dense.md-icon-left:last-of-type {
+        padding-left: 0; }
+      [dir=rtl] .md-dense input-container.md-icon-left:last-of-type, [dir=rtl]
+      md-input-container.md-dense.md-icon-left:last-of-type {
+        padding-right: 48px; }
+  .md-dense input-container.md-icon-right,
+  md-input-container.md-dense.md-icon-right {
+    padding-left: 16px;
+    padding-right: 48px; }
+    [dir=rtl] .md-dense input-container.md-icon-right, [dir=rtl]
+    md-input-container.md-dense.md-icon-right {
+      padding-left: 48px; }
+    [dir=rtl] .md-dense input-container.md-icon-right, [dir=rtl]
+    md-input-container.md-dense.md-icon-right {
+      padding-right: 16px; }
+    .md-dense input-container.md-icon-right:last-child,
+    md-input-container.md-dense.md-icon-right:last-child {
+      padding-left: 0;
+      padding-right: 48px; }
+      [dir=rtl] .md-dense input-container.md-icon-right:last-child, [dir=rtl]
+      md-input-container.md-dense.md-icon-right:last-child {
+        padding-left: 48px; }
+      [dir=rtl] .md-dense input-container.md-icon-right:last-child, [dir=rtl]
+      md-input-container.md-dense.md-icon-right:last-child {
+        padding-right: 0; }
+  .md-dense input-container.md-icon-left.md-icon-right,
+  md-input-container.md-dense.md-icon-left.md-icon-right {
+    padding-left: 48px;
+    padding-right: 48px; }
+    .md-dense input-container.md-icon-left.md-icon-right > label:not(.md-no-float):not(._md-container-ignore),
+    .md-dense input-container.md-icon-left.md-icon-right > label .md-placeholder,
+    md-input-container.md-dense.md-icon-left.md-icon-right > label:not(.md-no-float):not(._md-container-ignore),
+    md-input-container.md-dense.md-icon-left.md-icon-right > label .md-placeholder {
+      width: calc(100% - (48px * 2)); }
+    .md-dense input-container.md-icon-left.md-icon-right.md-input-focused > label:not(.md-no-float):not(._md-container-ignore),
+    .md-dense input-container.md-icon-left.md-icon-right.md-input-focused > label .md-placeholder, .md-dense input-container.md-icon-left.md-icon-right.md-input-has-placeholder > label:not(.md-no-float):not(._md-container-ignore),
+    .md-dense input-container.md-icon-left.md-icon-right.md-input-has-placeholder > label .md-placeholder, .md-dense input-container.md-icon-left.md-icon-right.md-input-has-value > label:not(.md-no-float):not(._md-container-ignore),
+    .md-dense input-container.md-icon-left.md-icon-right.md-input-has-value > label .md-placeholder,
+    md-input-container.md-dense.md-icon-left.md-icon-right.md-input-focused > label:not(.md-no-float):not(._md-container-ignore),
+    md-input-container.md-dense.md-icon-left.md-icon-right.md-input-focused > label .md-placeholder,
+    md-input-container.md-dense.md-icon-left.md-icon-right.md-input-has-placeholder > label:not(.md-no-float):not(._md-container-ignore),
+    md-input-container.md-dense.md-icon-left.md-icon-right.md-input-has-placeholder > label .md-placeholder,
+    md-input-container.md-dense.md-icon-left.md-icon-right.md-input-has-value > label:not(.md-no-float):not(._md-container-ignore),
+    md-input-container.md-dense.md-icon-left.md-icon-right.md-input-has-value > label .md-placeholder {
+      width: calc((100% - (48px * 2)) / 1); }
 
 @media screen and (-ms-high-contrast: active) {
   md-input-container.md-default-theme > md-icon {

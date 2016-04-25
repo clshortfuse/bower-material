@@ -32,12 +32,12 @@ md-checkbox {
     margin-left: 16px; }
   [dir=rtl] md-checkbox {
     margin-right: 3px; }
-  md-checkbox:last-of-type {
+  md-checkbox:last-child {
     margin-left: 3px;
-    margin-right: 0; }
-    [dir=rtl] md-checkbox:last-of-type {
-      margin-left: 0; }
-    [dir=rtl] md-checkbox:last-of-type {
+    margin-right: 3px; }
+    [dir=rtl] md-checkbox:last-child {
+      margin-left: 3px; }
+    [dir=rtl] md-checkbox:last-child {
       margin-right: 3px; }
   md-checkbox.md-focused:not([disabled]) ._md-container:before {
     left: -8px;

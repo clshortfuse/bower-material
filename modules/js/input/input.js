@@ -435,20 +435,17 @@ function inputTextareaDirective($mdUtil, $window, $mdAria, $timeout) {
           .attr('rows', 1);
 
         if (minRows) {
-          var paddingSize = parseInt(window.getComputedStyle(node)['padding-bottom']) || 0;
           if (!lineHeight) {
             node.style.minHeight = 0;
             lineHeight = element.prop('clientHeight');
-            if (lineHeight)
-              lineHeight -= paddingSize;
             node.style.minHeight = null;
           }
 
           var newRows = Math.round( Math.round(getHeight() / lineHeight) );
           var rowsToSet = Math.min(newRows, minRows);
-          
+
           element
-            .css('height', lineHeight * rowsToSet + paddingSize + 'px')
+            .css('height', lineHeight * rowsToSet + 'px')
             .attr('rows', rowsToSet)
             .toggleClass('_md-textarea-scrollable', newRows >= minRows);
 

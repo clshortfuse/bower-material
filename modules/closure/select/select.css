@@ -303,3 +303,15 @@ md-select-menu[multiple] md-option._md-checkbox-enabled {
       margin-left: auto; }
     [dir=rtl] md-select-menu[multiple] md-option._md-checkbox-enabled ._md-container {
       margin-right: 10.66667px; }
+
+.md-dense input-container ._md-select-value,
+md-input-container.md-dense ._md-select-value {
+  padding-top: 0px;
+  padding-bottom: 4px;
+  font-size: 13px; }
+
+.md-dense input-container md-select:not([disabled]).ng-invalid.ng-dirty ._md-select-value,
+.md-dense input-container md-select:not([disabled]):focus ._md-select-value,
+md-input-container.md-dense md-select:not([disabled]).ng-invalid.ng-dirty ._md-select-value,
+md-input-container.md-dense md-select:not([disabled]):focus ._md-select-value {
+  padding-bottom: 3px; }
