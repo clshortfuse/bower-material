@@ -84,3 +84,7 @@ html.md-THEME_NAME-theme, body.md-THEME_NAME-theme {
 @media screen and (-ms-high-contrast: active) {
   md-whiteframe {
     border: 1px solid #fff; } }
+
+@media print {
+  md-whiteframe, [md-whiteframe] {
+    background-color: #ffffff; } }
