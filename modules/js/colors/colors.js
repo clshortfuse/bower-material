@@ -2,7 +2,7 @@
  * Angular Material Design
  * https://github.com/angular/material
  * @license MIT
- * v1.1.0-rc.5-master-d6996b7
+ * v1.1.0-rc.5
  */
 (function( window, angular, undefined ){
 "use strict";
@@ -293,10 +293,6 @@
           var lastColors = {};
 
           var parseColors = function (theme) {
-            if (typeof theme !== 'string') {
-              theme = '';
-            }
-
             if (!attrs.mdColors) {
               attrs.mdColors = '{}';
             }

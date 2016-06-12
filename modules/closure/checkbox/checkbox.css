@@ -2,20 +2,16 @@
  * Angular Material Design
  * https://github.com/angular/material
  * @license MIT
- * v1.1.0-rc.5-master-d6996b7
+ * v1.1.0-rc.5
  */
 /*  Only used with Theme processes */
 html.md-THEME_NAME-theme, body.md-THEME_NAME-theme {
   color: '{{foreground-1}}';
   background-color: '{{background-color}}'; }
 
-.md-inline-form md-checkbox {
-  margin: 19px 0 18px; }
-
 md-checkbox {
   box-sizing: border-box;
   display: inline-block;
-  margin-bottom: 16px;
   white-space: nowrap;
   cursor: pointer;
   outline: none;
@@ -24,17 +20,8 @@ md-checkbox {
       -ms-user-select: none;
           user-select: none;
   position: relative;
-  min-width: 20px;
-  min-height: 20px;
-  margin-left: 0;
-  margin-right: 16px; }
-  [dir=rtl] md-checkbox {
-    margin-left: 16px; }
-  [dir=rtl] md-checkbox {
-    margin-right: 0; }
-  md-checkbox:last-of-type {
-    margin-left: 0;
-    margin-right: 0; }
+  min-width: 18px;
+  min-height: 36px; }
   md-checkbox.md-focused:not([disabled]) ._md-container:before {
     left: -8px;
     top: -8px;
@@ -42,8 +29,6 @@ md-checkbox {
     bottom: -8px; }
   md-checkbox.md-focused:not([disabled]):not(.md-checked) ._md-container:before {
     background-color: rgba(0, 0, 0, 0.12); }
-  md-checkbox.md-align-top-left > div._md-container {
-    top: 12px; }
   md-checkbox ._md-container {
     position: absolute;
     top: 50%;
@@ -51,8 +36,8 @@ md-checkbox {
             transform: translateY(-50%);
     box-sizing: border-box;
     display: inline-block;
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
     left: 0;
     right: auto; }
     [dir=rtl] md-checkbox ._md-container {
@@ -96,8 +81,8 @@ md-checkbox {
     position: absolute;
     top: 0;
     left: 0;
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
     border-width: 2px;
     border-style: solid;
     border-radius: 2px; }
@@ -108,11 +93,11 @@ md-checkbox {
       -webkit-transform: rotate(45deg);
               transform: rotate(45deg);
       position: absolute;
-      left: 6.66667px;
-      top: 2.22222px;
+      left: 6px;
+      top: 2px;
       display: table;
-      width: 6.66667px;
-      height: 13.33333px;
+      width: 6px;
+      height: 12px;
       border-width: 2px;
       border-style: solid;
       border-top: 0;
@@ -128,13 +113,23 @@ md-checkbox {
     -webkit-transform: translate(-50%, -50%);
             transform: translate(-50%, -50%);
     display: table;
-    width: 12px;
+    width: 10.8px;
     height: 2px;
     border-width: 2px;
     border-style: solid;
     border-top: 0;
     border-left: 0;
     content: ''; }
+  md-checkbox ._md-container {
+    top: auto;
+    left: initial;
+    right: auto;
+    margin: 3px;
+    margin-top: 21px; }
+    [dir=rtl] md-checkbox ._md-container {
+      left: auto; }
+    [dir=rtl] md-checkbox ._md-container {
+      right: initial; }
   md-checkbox ._md-label {
     box-sizing: border-box;
     position: relative;
@@ -145,9 +140,59 @@ md-checkbox {
        -moz-user-select: text;
         -ms-user-select: text;
             user-select: text;
-    margin-left: 30px;
+    margin-top: 9px;
+    margin-bottom: auto;
+    margin-left: 36px;
     margin-right: 0; }
     [dir=rtl] md-checkbox ._md-label {
       margin-left: 0; }
     [dir=rtl] md-checkbox ._md-label {
-      margin-right: 30px; }
+      margin-right: 36px; }
+    md-checkbox ._md-label:empty {
+      display: none; }
+  [md-spacing="wide"] md-checkbox ._md-label, md-checkbox[md-spacing="wide"] ._md-label {
+    margin-left: 48px;
+    margin-right: 0; }
+    [dir=rtl] [md-spacing="wide"] md-checkbox ._md-label, [dir=rtl] md-checkbox[md-spacing="wide"] ._md-label {
+      margin-left: 0; }
+    [dir=rtl] [md-spacing="wide"] md-checkbox ._md-label, [dir=rtl] md-checkbox[md-spacing="wide"] ._md-label {
+      margin-right: 48px; }
+  [md-spacing="extra-wide"] md-checkbox ._md-label, md-checkbox[md-spacing="extra-wide"] ._md-label {
+    margin-left: 56px;
+    margin-right: 0; }
+    [dir=rtl] [md-spacing="extra-wide"] md-checkbox ._md-label, [dir=rtl] md-checkbox[md-spacing="extra-wide"] ._md-label {
+      margin-left: 0; }
+    [dir=rtl] [md-spacing="extra-wide"] md-checkbox ._md-label, [dir=rtl] md-checkbox[md-spacing="extra-wide"] ._md-label {
+      margin-right: 56px; }
+
+.layout-row > md-checkbox:not(:last-child),
+.layout-xs-row > md-checkbox:not(:last-child), .layout-gt-xs-row > md-checkbox:not(:last-child),
+.layout-sm-row > md-checkbox:not(:last-child), .layout-gt-sm-row > md-checkbox:not(:last-child),
+.layout-md-row > md-checkbox:not(:last-child), .layout-gt-md-row > md-checkbox:not(:last-child),
+.layout-lg-row > md-checkbox:not(:last-child), .layout-gt-lg-row > md-checkbox:not(:last-child),
+.layout-xl-row > md-checkbox:not(:last-child) {
+  margin-right: 16px;
+  margin-left: 0; }
+  [dir=rtl] .layout-row > md-checkbox:not(:last-child), [dir=rtl]
+  .layout-xs-row > md-checkbox:not(:last-child), [dir=rtl] .layout-gt-xs-row > md-checkbox:not(:last-child), [dir=rtl]
+  .layout-sm-row > md-checkbox:not(:last-child), [dir=rtl] .layout-gt-sm-row > md-checkbox:not(:last-child), [dir=rtl]
+  .layout-md-row > md-checkbox:not(:last-child), [dir=rtl] .layout-gt-md-row > md-checkbox:not(:last-child), [dir=rtl]
+  .layout-lg-row > md-checkbox:not(:last-child), [dir=rtl] .layout-gt-lg-row > md-checkbox:not(:last-child), [dir=rtl]
+  .layout-xl-row > md-checkbox:not(:last-child) {
+    margin-right: 0; }
+  [dir=rtl] .layout-row > md-checkbox:not(:last-child), [dir=rtl]
+  .layout-xs-row > md-checkbox:not(:last-child), [dir=rtl] .layout-gt-xs-row > md-checkbox:not(:last-child), [dir=rtl]
+  .layout-sm-row > md-checkbox:not(:last-child), [dir=rtl] .layout-gt-sm-row > md-checkbox:not(:last-child), [dir=rtl]
+  .layout-md-row > md-checkbox:not(:last-child), [dir=rtl] .layout-gt-md-row > md-checkbox:not(:last-child), [dir=rtl]
+  .layout-lg-row > md-checkbox:not(:last-child), [dir=rtl] .layout-gt-lg-row > md-checkbox:not(:last-child), [dir=rtl]
+  .layout-xl-row > md-checkbox:not(:last-child) {
+    margin-left: 16px; }
+
+.md-inline-form .layout-row > md-checkbox, .md-inline-form
+.layout-xs-row > md-checkbox, .md-inline-form .layout-gt-xs-row > md-checkbox, .md-inline-form
+.layout-sm-row > md-checkbox, .md-inline-form .layout-gt-sm-row > md-checkbox, .md-inline-form
+.layout-md-row > md-checkbox, .md-inline-form .layout-gt-md-row > md-checkbox, .md-inline-form
+.layout-lg-row > md-checkbox, .md-inline-form .layout-gt-lg-row > md-checkbox, .md-inline-form
+.layout-xl-row > md-checkbox {
+  margin-top: 15px;
+  margin-bottom: auto; }
