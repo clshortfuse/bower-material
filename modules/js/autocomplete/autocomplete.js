@@ -77,6 +77,7 @@ function MdAutocompleteCtrl ($scope, $element, $mdUtil, $mdConstant, $mdTheming,
   ctrl.notFoundVisible               = notFoundVisible;
   ctrl.loadingIsVisible              = loadingIsVisible;
   ctrl.clearCache                    = clearCache;
+  ctrl.reset                         = reset;
 
   return init();
 
@@ -869,12 +870,22 @@ function MdAutocompleteCtrl ($scope, $element, $mdUtil, $mdConstant, $mdTheming,
       if (isMatching) select(0);
     });
   }
-  
+
   /**
    * Clears cache
    */
   function clearCache () {
     cache = {};
+  }
+
+  /**
+   * Resets control
+   */
+  function reset () {
+    clearCache();
+    clearSelectedItem();
+    clearSearchText();
+    ctrl.hidden = true;
   }
 
 }
