@@ -2,7 +2,7 @@
  * Angular Material Design
  * https://github.com/angular/material
  * @license MIT
- * v1.1.0-rc4
+ * v1.1.0-rc.5
  */
 /*  Only used with Theme processes */
 html.md-THEME_NAME-theme, body.md-THEME_NAME-theme {
@@ -40,7 +40,8 @@ md-calendar {
   width: 44px;
   text-align: center;
   padding: 0;
-  border: none; }
+  border: none;
+  box-sizing: content-box; }
   .md-calendar-date:first-child {
     padding-left: 16px; }
     [dir=rtl] .md-calendar-date:first-child {
@@ -75,6 +76,8 @@ md-calendar {
   padding: 0 0 0 24px; }
   [dir=rtl] .md-calendar-month-label {
     padding: 0 24px 0 0; }
+  md-calendar-month .md-calendar-month-label:not(.md-calendar-month-label-disabled) {
+    cursor: pointer; }
 
 .md-calendar-day-header {
   table-layout: fixed;
@@ -86,6 +89,7 @@ md-calendar {
     text-align: center;
     padding: 0;
     border: none;
+    box-sizing: content-box;
     font-weight: normal;
     height: 40px; }
     .md-calendar-day-header th:first-child {
@@ -113,7 +117,8 @@ md-calendar {
   .md-calendar:first-child {
     border-top: 1px solid transparent; }
   .md-calendar tbody, .md-calendar td, .md-calendar tr {
-    vertical-align: middle; }
+    vertical-align: middle;
+    box-sizing: content-box; }
 
 /*  Only used with Theme processes */
 html.md-THEME_NAME-theme, body.md-THEME_NAME-theme {
@@ -124,9 +129,26 @@ html.md-THEME_NAME-theme, body.md-THEME_NAME-theme {
 md-datepicker {
   white-space: nowrap;
   overflow: hidden;
+  position: relative;
   padding-right: 18px;
   margin-right: -18px;
+  padding-left: 14px;
+  margin-left: -14px;
   vertical-align: middle; }
+  md-input-container md-datepicker {
+    position: initial; }
+    md-input-container md-datepicker .md-datepicker-button.md-button {
+      left: -14px;
+      margin-top: 30px; }
+      [dir=rtl] md-input-container md-datepicker .md-datepicker-button.md-button {
+        left: 0;
+        left: auto;
+        left: initial;
+        right: -14px; }
+    md-input-container md-datepicker .md-datepicker-triangle-button {
+      top: 24px; }
+    md-input-container md-datepicker .md-datepicker-input {
+      width: auto; }
   [dir=rtl] md-datepicker {
     padding-right: 0;
     padding-right: auto;
@@ -137,44 +159,141 @@ md-datepicker {
     margin-right: auto;
     margin-right: initial;
     margin-left: -18px; }
+  [dir=rtl] md-datepicker {
+    padding-left: 0;
+    padding-left: auto;
+    padding-left: initial;
+    padding-right: 14px; }
+  [dir=rtl] md-datepicker {
+    margin-left: 0;
+    margin-left: auto;
+    margin-left: initial;
+    margin-right: -14px; }
 
-.md-inline-form md-datepicker {
-  margin-top: 12px; }
+.md-inline-form .layout-row > md-datepicker, .md-inline-form
+.layout-xs-row > md-datepicker, .md-inline-form .layout-gt-xs-row > md-datepicker, .md-inline-form
+.layout-sm-row > md-datepicker, .md-inline-form .layout-gt-sm-row > md-datepicker, .md-inline-form
+.layout-md-row > md-datepicker, .md-inline-form .layout-gt-md-row > md-datepicker, .md-inline-form
+.layout-lg-row > md-datepicker, .md-inline-form .layout-gt-lg-row > md-datepicker, .md-inline-form
+.layout-xl-row > md-datepicker {
+  margin-top: 24px;
+  margin-bottom: auto; }
 
-.md-datepicker-button {
-  display: inline-block;
-  box-sizing: border-box;
-  background: none; }
+.layout-row > md-datepicker:not(:last-child),
+.layout-xs-row > md-datepicker:not(:last-child), .layout-gt-xs-row > md-datepicker:not(:last-child),
+.layout-sm-row > md-datepicker:not(:last-child), .layout-gt-sm-row > md-datepicker:not(:last-child),
+.layout-md-row > md-datepicker:not(:last-child), .layout-gt-md-row > md-datepicker:not(:last-child),
+.layout-lg-row > md-datepicker:not(:last-child), .layout-gt-lg-row > md-datepicker:not(:last-child),
+.layout-xl-row > md-datepicker:not(:last-child) {
+  margin-right: -2px; }
+  [dir=rtl] .layout-row > md-datepicker:not(:last-child), [dir=rtl]
+  .layout-xs-row > md-datepicker:not(:last-child), [dir=rtl] .layout-gt-xs-row > md-datepicker:not(:last-child), [dir=rtl]
+  .layout-sm-row > md-datepicker:not(:last-child), [dir=rtl] .layout-gt-sm-row > md-datepicker:not(:last-child), [dir=rtl]
+  .layout-md-row > md-datepicker:not(:last-child), [dir=rtl] .layout-gt-md-row > md-datepicker:not(:last-child), [dir=rtl]
+  .layout-lg-row > md-datepicker:not(:last-child), [dir=rtl] .layout-gt-lg-row > md-datepicker:not(:last-child), [dir=rtl]
+  .layout-xl-row > md-datepicker:not(:last-child) {
+    margin-right: 0;
+    margin-right: auto;
+    margin-right: initial;
+    margin-left: -2px; }
+
+.md-datepicker-button.md-button {
+  top: auto;
+  margin-top: 6px;
+  position: absolute;
+  left: 0;
+  background: none;
+  z-index: 1;
+  vertical-align: middle; }
+  [dir=rtl] .md-datepicker-button.md-button {
+    left: 0;
+    left: auto;
+    left: initial;
+    right: 0; }
 
 .md-datepicker-input {
-  font-size: 14px;
+  font-size: 16px;
   box-sizing: border-box;
   border: none;
   box-shadow: none;
   outline: none;
   background: transparent;
   min-width: 120px;
-  max-width: 328px; }
+  max-width: 274px; }
   .md-datepicker-input::-ms-clear {
     display: none; }
+  [md-spacing="wide"] .md-datepicker-input, .md-datepicker-input[md-spacing="wide"] {
+    max-width: 262px; }
+  [md-spacing="extra-wide"] .md-datepicker-input, .md-datepicker-input[md-spacing="extra-wide"] {
+    max-width: 254px; }
+
+._md-datepicker-floating-label > label:not(.md-no-float):not(._md-container-ignore) {
+  left: 36px; }
+  [dir=rtl] ._md-datepicker-floating-label > label:not(.md-no-float):not(._md-container-ignore) {
+    left: 0;
+    left: auto;
+    left: initial;
+    right: 36px; }
+
+[md-spacing="wide"] ._md-datepicker-floating-label > label:not(.md-no-float):not(._md-container-ignore), ._md-datepicker-floating-label[md-spacing="wide"] > label:not(.md-no-float):not(._md-container-ignore) {
+  left: 48px; }
+  [dir=rtl] [md-spacing="wide"] ._md-datepicker-floating-label > label:not(.md-no-float):not(._md-container-ignore), [dir=rtl] ._md-datepicker-floating-label[md-spacing="wide"] > label:not(.md-no-float):not(._md-container-ignore) {
+    left: 0;
+    left: auto;
+    left: initial;
+    right: 48px; }
+
+[md-spacing="extra-wide"] ._md-datepicker-floating-label > label:not(.md-no-float):not(._md-container-ignore), ._md-datepicker-floating-label[md-spacing="extra-wide"] > label:not(.md-no-float):not(._md-container-ignore) {
+  left: 56px; }
+  [dir=rtl] [md-spacing="extra-wide"] ._md-datepicker-floating-label > label:not(.md-no-float):not(._md-container-ignore), [dir=rtl] ._md-datepicker-floating-label[md-spacing="extra-wide"] > label:not(.md-no-float):not(._md-container-ignore) {
+    left: 0;
+    left: auto;
+    left: initial;
+    right: 56px; }
+
+._md-datepicker-floating-label > md-datepicker {
+  overflow: visible; }
 
 .md-datepicker-input-container {
   position: relative;
-  padding-bottom: 5px;
-  border-bottom-width: 1px;
-  border-bottom-style: solid;
   display: inline-block;
-  width: auto;
-  margin-left: 12px; }
-  [dir=rtl] .md-datepicker-input-container {
-    margin-left: 0;
-    margin-left: auto;
-    margin-left: initial;
-    margin-right: 12px; }
-  .md-datepicker-input-container.md-datepicker-focused {
-    border-bottom-width: 2px; }
+  width: auto; }
+  .md-datepicker-input-container > input {
+    margin-top: 10px;
+    padding-top: 0;
+    padding-bottom: 7px;
+    border-bottom-width: 1px;
+    border-bottom-style: solid;
+    margin-bottom: 11px;
+    margin-left: 36px; }
+    [dir=rtl] .md-datepicker-input-container > input {
+      margin-left: 0;
+      margin-left: auto;
+      margin-left: initial;
+      margin-right: 36px; }
+  [md-spacing="wide"] .md-datepicker-input-container > input, .md-datepicker-input-container[md-spacing="wide"] > input {
+    margin-left: 48px; }
+    [dir=rtl] [md-spacing="wide"] .md-datepicker-input-container > input, [dir=rtl] .md-datepicker-input-container[md-spacing="wide"] > input {
+      margin-left: 0;
+      margin-left: auto;
+      margin-left: initial;
+      margin-right: 48px; }
+  [md-spacing="extra-wide"] .md-datepicker-input-container > input, .md-datepicker-input-container[md-spacing="extra-wide"] > input {
+    margin-left: 56px; }
+    [dir=rtl] [md-spacing="extra-wide"] .md-datepicker-input-container > input, [dir=rtl] .md-datepicker-input-container[md-spacing="extra-wide"] > input {
+      margin-left: 0;
+      margin-left: auto;
+      margin-left: initial;
+      margin-right: 56px; }
+  .md-datepicker-input-container.md-datepicker-focused > input {
+    border-bottom-width: 2px;
+    padding-bottom: 6px; }
+
+.md-datepicker-is-showing .md-scroll-mask {
+  z-index: 99; }
 
 .md-datepicker-calendar-pane {
+  left: -100%;
   position: absolute;
   top: 0;
   left: 0;
@@ -193,7 +312,7 @@ md-datepicker {
             transform: scale(1); }
 
 .md-datepicker-input-mask {
-  height: 40px;
+  height: 39px;
   width: 340px;
   position: relative;
   background: transparent;
@@ -221,6 +340,7 @@ md-datepicker {
   left: 50%;
   -webkit-transform: translate(-50%, -50%);
           transform: translate(-50%, -50%);
+  font-size: 16px;
   width: 0;
   height: 0;
   border-left: 5px solid transparent;
@@ -229,21 +349,16 @@ md-datepicker {
 
 .md-datepicker-triangle-button {
   position: absolute;
-  right: 0;
-  top: 0;
-  -webkit-transform: translateY(-25%) translateX(45%);
-          transform: translateY(-25%) translateX(45%); }
+  right: -14px;
+  top: 0; }
   [dir=rtl] .md-datepicker-triangle-button {
     right: 0;
     right: auto;
     right: initial;
-    left: 0; }
-  [dir=rtl] .md-datepicker-triangle-button {
-    -webkit-transform: translateY(-25%) translateX(-45%);
-            transform: translateY(-25%) translateX(-45%); }
+    left: -14px; }
 
 .md-datepicker-triangle-button.md-button.md-icon-button {
-  height: 100%;
+  height: 36px;
   width: 36px;
   position: absolute; }
 
@@ -253,27 +368,43 @@ md-datepicker[disabled] .md-datepicker-input-container {
 md-datepicker[disabled] .md-datepicker-triangle-button {
   display: none; }
 
-.md-datepicker-open .md-datepicker-input-container {
-  margin-left: -12px;
-  margin-bottom: -5px;
-  border: none; }
-  [dir=rtl] .md-datepicker-open .md-datepicker-input-container {
-    margin-left: 0;
-    margin-left: auto;
-    margin-left: initial;
-    margin-right: -12px; }
-
-.md-datepicker-open .md-datepicker-input {
-  margin-left: 24px;
-  height: 40px; }
-  [dir=rtl] .md-datepicker-open .md-datepicker-input {
-    margin-left: 0;
-    margin-left: auto;
-    margin-left: initial;
-    margin-right: 24px; }
-
-.md-datepicker-open .md-datepicker-triangle-button {
-  display: none; }
+.md-datepicker-open {
+  overflow: hidden; }
+  .md-datepicker-open .md-datepicker-input-container {
+    margin-left: 30px; }
+    [dir=rtl] .md-datepicker-open .md-datepicker-input-container {
+      margin-left: 0;
+      margin-left: auto;
+      margin-left: initial;
+      margin-right: 30px; }
+  .md-datepicker-open input.md-datepicker-input {
+    margin-left: 6px;
+    border-bottom-color: transparent; }
+    [dir=rtl] .md-datepicker-open input.md-datepicker-input {
+      margin-left: 0;
+      margin-left: auto;
+      margin-left: initial;
+      margin-right: 6px; }
+  .md-datepicker-open._md-datepicker-floating-label .md-datepicker-input-container {
+    margin-top: 24px; }
+  .md-datepicker-open .md-datepicker-input {
+    margin-top: 10px !important; }
+  [md-spacing="wide"] .md-datepicker-open input.md-datepicker-input, .md-datepicker-open[md-spacing="wide"] input.md-datepicker-input {
+    margin-left: 18px; }
+    [dir=rtl] [md-spacing="wide"] .md-datepicker-open input.md-datepicker-input, [dir=rtl] .md-datepicker-open[md-spacing="wide"] input.md-datepicker-input {
+      margin-left: 0;
+      margin-left: auto;
+      margin-left: initial;
+      margin-right: 18px; }
+  [md-spacing="extra-wide"] .md-datepicker-open input.md-datepicker-input, .md-datepicker-open[md-spacing="extra-wide"] input.md-datepicker-input {
+    margin-left: 26px; }
+    [dir=rtl] [md-spacing="extra-wide"] .md-datepicker-open input.md-datepicker-input, [dir=rtl] .md-datepicker-open[md-spacing="extra-wide"] input.md-datepicker-input {
+      margin-left: 0;
+      margin-left: auto;
+      margin-left: initial;
+      margin-right: 26px; }
+  .md-datepicker-open .md-datepicker-triangle-button {
+    display: none; }
 
 .md-datepicker-pos-adjusted .md-datepicker-input-mask {
   display: none; }

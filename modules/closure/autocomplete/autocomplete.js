@@ -2,7 +2,7 @@
  * Angular Material Design
  * https://github.com/angular/material
  * @license MIT
- * v1.1.0-rc4
+ * v1.1.0-rc.5
  */
 goog.provide('ng.material.components.autocomplete');
 goog.require('ng.material.components.icon');
@@ -444,7 +444,7 @@ function MdAutocompleteCtrl ($scope, $element, $mdUtil, $mdConstant, $mdTheming,
   /**
    * Handles input focus event, determines if the dropdown should show.
    */
-  function focus () {
+  function focus($event) {
     hasFocus = true;
     //-- if searchText is null, let's force it to be a string
     if (!angular.isString($scope.searchText)) $scope.searchText = '';
@@ -493,13 +493,15 @@ function MdAutocompleteCtrl ($scope, $element, $mdUtil, $mdConstant, $mdTheming,
         event.stopPropagation();
         event.preventDefault();
 
-        clearValue(shouldClearOnEscape() && $scope.searchText);
+        clearSelectedItem();
+        if ($scope.searchText && hasEscapeOption('clear')) {
+          clearSearchText();
+        }
 
-        if (shouldBlurOnEscape()) {
+        if (hasEscapeOption('blur')) {
           // Force the component to blur if they hit escape
           doBlur(true);
-        }
-        else {
+        } else {
           // Manually hide (needed for mdNotFound support)
           ctrl.hidden = true;
         }
@@ -587,31 +589,15 @@ function MdAutocompleteCtrl ($scope, $element, $mdUtil, $mdConstant, $mdTheming,
    * @returns {boolean}
    */
   function shouldProcessEscape() {
-    if (shouldBlurOnEscape()) return true;                       // Needs blur
-    if (!ctrl.hidden) return true;                               // Hide dropdown
-    if (ctrl.loading) return true;                               // Cancel loading
-    if (shouldClearOnEscape() && $scope.searchText) return true; // Clear Text
-    return false;
+    return hasEscapeOption('blur') || !ctrl.hidden || ctrl.loading || hasEscapeOption('clear') && $scope.searchText;
   }
 
   /**
-   * Determines if the escape key should blur focus
+   * Determines if an escape option is set
    * @returns {boolean}
    */
-  function shouldBlurOnEscape() {
-    if (!$scope.escapeOptions) return true;                     // default true
-    if ($scope.escapeOptions.toLowerCase().indexOf('blur') >= 0) return true; // blur is requested
-    return false;
-  }
-
-  /**
-   * Determines if the escape key should clear input
-   * @returns {boolean}
-   */
-  function shouldClearOnEscape() {
-    if (!$scope.escapeOptions) return true;                      // default true
-    if ($scope.escapeOptions.toLowerCase().indexOf('clear') >= 0) return true; // blur is requested
-    return false;
+  function hasEscapeOption(option) {
+    return !$scope.escapeOptions || $scope.escapeOptions.toLowerCase().indexOf(option) !== -1;
   }
 
   /**
@@ -702,29 +688,42 @@ function MdAutocompleteCtrl ($scope, $element, $mdUtil, $mdConstant, $mdTheming,
   /**
    * Clears the searchText value and selected item.
    */
-  function clearValue (shouldClearText) {
-    // Set the loading to true so we don't see flashes of content.
-    // The flashing will only occour when an async request is running.
-    // So the loading process will stop when the results had been retrieved.
-    setLoading(true);
+  function clearValue () {
+    clearSelectedItem();
+    clearSearchText();
+  }
 
+  /**
+   * Clears the selected item
+   */
+  function clearSelectedItem () {
     // Reset our variables
     ctrl.index = 0;
     ctrl.matches = [];
-    if (shouldClearText || (shouldClearText === undefined)) {
-        $scope.searchText = '';
-    
-        // Per http://www.w3schools.com/jsref/event_oninput.asp
-        var eventObj = document.createEvent('CustomEvent');
-        eventObj.initCustomEvent('input', true, true, { value: $scope.searchText });
-        elements.input.dispatchEvent(eventObj);
-    
-        elements.input.focus();
-    }
-    else {
-        // If we're not clearing text, no change event will trigger, so cancel loading
-        setLoading(false);
-    }
+  }
+
+  /**
+   * Clears the searchText value
+   */
+  function clearSearchText () {
+    // Set the loading to true so we don't see flashes of content.
+    // The flashing will only occur when an async request is running.
+    // So the loading process will stop when the results had been retrieved.
+    setLoading(true);
+
+    $scope.searchText = '';
+
+    // Per http://www.w3schools.com/jsref/event_oninput.asp
+    var eventObj = document.createEvent('CustomEvent');
+    eventObj.initCustomEvent('input', true, true, { value: '' });
+    elements.input.dispatchEvent(eventObj);
+
+    // For some reason, firing the above event resets the value of $scope.searchText if
+    // $scope.searchText has a space character at the end, so we blank it one more time and then
+    // focus.
+    elements.input.blur();
+    $scope.searchText = '';
+    elements.input.focus();
   }
 
   /**
@@ -844,6 +843,7 @@ function MdAutocompleteCtrl ($scope, $element, $mdUtil, $mdConstant, $mdTheming,
     if (!$scope.noCache && cache[ term ]) {
       ctrl.matches = cache[ term ];
       updateMessages();
+      setLoading(false);
     } else {
       fetchResults(searchText);
     }
@@ -1001,7 +1001,7 @@ angular
  *     input validation for the field.
  */
 
-function MdAutocomplete () {
+function MdAutocomplete ($$mdSvgRegistry) {
 
   return {
     controller:   'MdAutocompleteCtrl',
@@ -1121,7 +1121,7 @@ function MdAutocomplete () {
                   ng-keydown="$mdAutocompleteCtrl.keydown($event)"\
                   ng-blur="$mdAutocompleteCtrl.blur()"\
                   ' + (attr.mdNoAsterisk != null ? 'md-no-asterisk="' + attr.mdNoAsterisk + '"' : '') + '\
-                  ng-focus="$mdAutocompleteCtrl.focus()"\
+                  ng-focus="$mdAutocompleteCtrl.focus($event)"\
                   aria-owns="ul-{{$mdAutocompleteCtrl.id}}"\
                   ' + (attr.mdSelectOnFocus != null ? 'md-select-on-focus=""' : '') + '\
                   aria-label="{{floatingLabel}}"\
@@ -1150,7 +1150,7 @@ function MdAutocomplete () {
                 ng-model="$mdAutocompleteCtrl.scope.searchText"\
                 ng-keydown="$mdAutocompleteCtrl.keydown($event)"\
                 ng-blur="$mdAutocompleteCtrl.blur()"\
-                ng-focus="$mdAutocompleteCtrl.focus()"\
+                ng-focus="$mdAutocompleteCtrl.focus($event)"\
                 placeholder="{{placeholder}}"\
                 aria-owns="ul-{{$mdAutocompleteCtrl.id}}"\
                 ' + (attr.mdSelectOnFocus != null ? 'md-select-on-focus=""' : '') + '\
@@ -1168,8 +1168,8 @@ function MdAutocomplete () {
                 type="button"\
                 tabindex="-1"\
                 ng-if="$mdAutocompleteCtrl.scope.searchText && !$mdAutocompleteCtrl.isDisabled"\
-                ng-click="$mdAutocompleteCtrl.clear()">\
-              <md-icon md-svg-icon="md-close"></md-icon>\
+                ng-click="$mdAutocompleteCtrl.clear($event)">\
+              <md-icon md-svg-src="' + $$mdSvgRegistry.mdClose + '"></md-icon>\
               <span class="_md-visually-hidden">Clear</span>\
             </button>\
                 ';
@@ -1178,6 +1178,7 @@ function MdAutocomplete () {
     }
   };
 }
+MdAutocomplete.$inject = ["$$mdSvgRegistry"];
 
 angular
   .module('material.components.autocomplete')
@@ -1289,11 +1290,10 @@ function MdHighlightCtrl ($scope, $element, $attrs) {
   }
 
   function getRegExp (text, flags) {
-    var str = '';
-    if (flags.indexOf('^') >= 1) str += '^';
-    str += text;
-    if (flags.indexOf('$') >= 1) str += '$';
-    return new RegExp(sanitize(str), flags.replace(/[\$\^]/g, ''));
+    var startFlag = '', endFlag = '';
+    if (flags.indexOf('^') >= 0) startFlag = '^';
+    if (flags.indexOf('$') >= 0) endFlag = '$';
+    return new RegExp(startFlag + sanitize(text) + endFlag, flags.replace(/[\$\^]/g, ''));
   }
 }
 MdHighlightCtrl.$inject = ["$scope", "$element", "$attrs"];

@@ -2,7 +2,7 @@
  * Angular Material Design
  * https://github.com/angular/material
  * @license MIT
- * v1.1.0-rc4
+ * v1.1.0-rc.5
  */
 /*  Only used with Theme processes */
 html.md-THEME_NAME-theme, body.md-THEME_NAME-theme {
@@ -22,6 +22,12 @@ html.md-THEME_NAME-theme, body.md-THEME_NAME-theme {
 *
 *
 */
+/* IE10-IE11 column-flex bug fix (set proper default value) */
+.layout-column > .flex {
+  -ms-flex-basis: auto;
+  -ms-flex-preferred-size: auto;
+      flex-basis: auto; }
+
 /*  Only used with Theme processes */
 html.md-THEME_NAME-theme, body.md-THEME_NAME-theme {
   color: '{{foreground-1}}';
@@ -159,7 +165,8 @@ input:-webkit-autofill {
   top: 0;
   right: 0;
   bottom: 0;
-  left: 0; }
+  left: 0;
+  z-index: 50; }
   .md-scroll-mask > .md-scroll-mask-bar {
     display: block;
     position: absolute;
@@ -169,6 +176,12 @@ input:-webkit-autofill {
     bottom: 0;
     z-index: 65;
     box-shadow: inset 0px 0px 1px rgba(0, 0, 0, 0.3); }
+
+.md-no-momentum {
+  -webkit-overflow-scrolling: auto; }
+
+.md-no-flicker {
+  -webkit-transform: translateX(0); }
 
 @media (min-width: 960px) {
   .md-padding {
@@ -668,7 +681,8 @@ html.md-THEME_NAME-theme, body.md-THEME_NAME-theme {
     margin-left: initial;
     margin-right: calc(200% / 3); }
 
-.layout-align {
+.layout-align,
+.layout-align-start-stretch {
   -ms-flex-pack: start;
       justify-content: flex-start;
   -ms-flex-line-pack: stretch;
@@ -1680,7 +1694,8 @@ html.md-THEME_NAME-theme, body.md-THEME_NAME-theme {
       margin-left: auto;
       margin-left: initial;
       margin-right: calc(200% / 3); }
-  .layout-align-xs {
+  .layout-align-xs,
+  .layout-align-xs-start-stretch {
     -ms-flex-pack: start;
         justify-content: flex-start;
     -ms-flex-line-pack: stretch;
@@ -2528,7 +2543,8 @@ html.md-THEME_NAME-theme, body.md-THEME_NAME-theme {
       margin-left: auto;
       margin-left: initial;
       margin-right: calc(200% / 3); }
-  .layout-align-gt-xs {
+  .layout-align-gt-xs,
+  .layout-align-gt-xs-start-stretch {
     -ms-flex-pack: start;
         justify-content: flex-start;
     -ms-flex-line-pack: stretch;
@@ -3380,7 +3396,8 @@ html.md-THEME_NAME-theme, body.md-THEME_NAME-theme {
       margin-left: auto;
       margin-left: initial;
       margin-right: calc(200% / 3); }
-  .layout-align-sm {
+  .layout-align-sm,
+  .layout-align-sm-start-stretch {
     -ms-flex-pack: start;
         justify-content: flex-start;
     -ms-flex-line-pack: stretch;
@@ -4228,7 +4245,8 @@ html.md-THEME_NAME-theme, body.md-THEME_NAME-theme {
       margin-left: auto;
       margin-left: initial;
       margin-right: calc(200% / 3); }
-  .layout-align-gt-sm {
+  .layout-align-gt-sm,
+  .layout-align-gt-sm-start-stretch {
     -ms-flex-pack: start;
         justify-content: flex-start;
     -ms-flex-line-pack: stretch;
@@ -5080,7 +5098,8 @@ html.md-THEME_NAME-theme, body.md-THEME_NAME-theme {
       margin-left: auto;
       margin-left: initial;
       margin-right: calc(200% / 3); }
-  .layout-align-md {
+  .layout-align-md,
+  .layout-align-md-start-stretch {
     -ms-flex-pack: start;
         justify-content: flex-start;
     -ms-flex-line-pack: stretch;
@@ -5928,7 +5947,8 @@ html.md-THEME_NAME-theme, body.md-THEME_NAME-theme {
       margin-left: auto;
       margin-left: initial;
       margin-right: calc(200% / 3); }
-  .layout-align-gt-md {
+  .layout-align-gt-md,
+  .layout-align-gt-md-start-stretch {
     -ms-flex-pack: start;
         justify-content: flex-start;
     -ms-flex-line-pack: stretch;
@@ -6780,7 +6800,8 @@ html.md-THEME_NAME-theme, body.md-THEME_NAME-theme {
       margin-left: auto;
       margin-left: initial;
       margin-right: calc(200% / 3); }
-  .layout-align-lg {
+  .layout-align-lg,
+  .layout-align-lg-start-stretch {
     -ms-flex-pack: start;
         justify-content: flex-start;
     -ms-flex-line-pack: stretch;
@@ -7628,7 +7649,8 @@ html.md-THEME_NAME-theme, body.md-THEME_NAME-theme {
       margin-left: auto;
       margin-left: initial;
       margin-right: calc(200% / 3); }
-  .layout-align-gt-lg {
+  .layout-align-gt-lg,
+  .layout-align-gt-lg-start-stretch {
     -ms-flex-pack: start;
         justify-content: flex-start;
     -ms-flex-line-pack: stretch;
@@ -8474,7 +8496,8 @@ html.md-THEME_NAME-theme, body.md-THEME_NAME-theme {
       margin-left: auto;
       margin-left: initial;
       margin-right: calc(200% / 3); }
-  .layout-align-xl {
+  .layout-align-xl,
+  .layout-align-xl-start-stretch {
     -ms-flex-pack: start;
         justify-content: flex-start;
     -ms-flex-line-pack: stretch;

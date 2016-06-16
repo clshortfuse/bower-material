@@ -2,7 +2,7 @@
  * Angular Material Design
  * https://github.com/angular/material
  * @license MIT
- * v1.1.0-rc4
+ * v1.1.0-rc.5
  */
 (function( window, angular, undefined ){
 "use strict";
@@ -67,7 +67,7 @@
      * @name $mdColors#applyThemeColors
      *
      * @description
-     * Convert the color expression into an object with scope-interpolated values
+     * Gets a color json object, keys are css properties and values are string of the wanted color
      * Then calculate the rgba() values based on the theme color parts
      *
      * @param {DOMElement} element the element to apply the styles on.
@@ -80,7 +80,7 @@
      *     return {
      *       ...
      *       link: function (scope, elem) {
-     *         $mdColors.applyThemeColors(elem, scope, {color: 'red'});
+     *         $mdColors.applyThemeColors(elem, {color: 'red'});
      *       }
      *    }
      *   });
@@ -88,8 +88,10 @@
      */
     function applyThemeColors(element, colorExpression) {
       try {
-        // Assign the calculate RGBA color values directly as inline CSS
-        element.css(interpolateColors(colorExpression));
+        if (colorExpression) {
+          // Assign the calculate RGBA color values directly as inline CSS
+          element.css(interpolateColors(colorExpression));
+        }
       } catch (e) {
         $log.error(e.message);
       }
@@ -288,7 +290,17 @@
         return function (scope, element, attrs, ctrl) {
           var mdThemeController = ctrl[0];
 
+          var lastColors = {};
+
           var parseColors = function (theme) {
+            if (typeof theme !== 'string') {
+              theme = '';
+            }
+
+            if (!attrs.mdColors) {
+              attrs.mdColors = '{}';
+            }
+
             /**
              * Json.parse() does not work because the keys are not quoted;
              * use $parse to convert to a hash map
@@ -320,7 +332,25 @@
               });
             }
 
+            cleanElement(colors);
+
             return colors;
+          };
+
+          var cleanElement = function (colors) {
+            if (!angular.equals(colors, lastColors)) {
+              var keys = Object.keys(lastColors);
+
+              if (lastColors.background && !keys['color']) {
+                keys.push('color');
+              }
+
+              keys.forEach(function (key) {
+                element.css(key, '');
+              });
+            }
+
+            lastColors = colors;
           };
 
           /**
@@ -334,7 +364,7 @@
             });
           }
 
-          scope.$on('destroy', function () {
+          scope.$on('$destroy', function () {
             unregisterChanges();
           });
 

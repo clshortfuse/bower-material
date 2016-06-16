@@ -2,7 +2,7 @@
  * Angular Material Design
  * https://github.com/angular/material
  * @license MIT
- * v1.1.0-rc4
+ * v1.1.0-rc.5
  */
 (function( window, angular, undefined ){
 "use strict";
@@ -439,16 +439,6 @@ function MdChipsCtrl ($scope, $mdConstant, $log, $element, $timeout, $mdUtil) {
   this.chipBuffer = '';
 
   /**
-   * Whether to use the onAppend expression to transform the chip buffer
-   * before appending it to the list.
-   * @type {boolean}
-   *
-   *
-   * @deprecated Will remove in 1.0.
-   */
-  this.useOnAppend = false;
-
-  /**
    * Whether to use the transformChip expression to transform the chip buffer
    * before appending it to the list.
    * @type {boolean}
@@ -657,25 +647,6 @@ MdChipsCtrl.prototype.appendChip = function(newChip) {
   // If they provide the md-on-add attribute, notify them of the chip addition
   if (this.useOnAdd && this.onAdd) {
     this.onAdd({ '$chip': newChip, '$index': index });
-  }
-};
-
-/**
- * Sets whether to use the md-on-append expression. This expression is
- * bound to scope and controller in {@code MdChipsDirective} as
- * {@code onAppend}. Due to the nature of directive scope bindings, the
- * controller cannot know on its own/from the scope whether an expression was
- * actually provided.
- *
- * @deprecated
- *
- * TODO: Remove deprecated md-on-append functionality in 1.0
- */
-MdChipsCtrl.prototype.useOnAppendExpression = function() {
-  this.$log.warn("md-on-append is deprecated; please use md-transform-chip or md-on-add instead");
-  if (!this.useTransformChip || !this.transformChip) {
-    this.useTransformChip = true;
-    this.transformChip = this.onAppend;
   }
 };
 
@@ -980,10 +951,31 @@ MdChipsCtrl.prototype.hasFocus = function () {
    *   </ul>
    * </ul>
    *
-   *  <span style="font-size:.8em;text-align:center">
-   *    Warning: This component is a WORK IN PROGRESS. If you use it now,
-   *    it will probably break on you in the future.
-   *  </span>
+   * <span style="font-size:.8em;text-align:center">
+   *   Warning: This component is a WORK IN PROGRESS. If you use it now,
+   *   it will probably break on you in the future.
+   * </span>
+   *
+   * Sometimes developers want to limit the amount of possible chips.<br/>
+   * You can specify the maximum amount of chips by using the following markup.
+   *
+   * <hljs lang="html">
+   *   <md-chips
+   *       ng-model="myItems"
+   *       placeholder="Add an item"
+   *       md-max-chips="5">
+   *   </md-chips>
+   * </hljs>
+   *
+   * In some cases, you have an autocomplete inside of the `md-chips`.<br/>
+   * When the maximum amount of chips has been reached, you can also disable the autocomplete selection.<br/>
+   * Here is an example markup.
+   *
+   * <hljs lang="html">
+   *   <md-chips ng-model="myItems" md-max-chips="5">
+   *     <md-autocomplete ng-hide="myItems.length > 5" ...></md-autocomplete>
+   *   </md-chips>
+   * </hljs>
    *
    * @param {string=|object=} ng-model A model to bind the list of items to
    * @param {string=} placeholder Placeholder text that will be forwarded to the input.
@@ -1092,7 +1084,7 @@ MdChipsCtrl.prototype.hasFocus = function () {
           type="button"\
           aria-hidden="true"\
           tabindex="-1">\
-        <md-icon md-svg-icon="md-close"></md-icon>\
+        <md-icon md-svg-src="{{ $mdChipsCtrl.mdCloseIcon }}"></md-icon>\
         <span class="_md-visually-hidden">\
           {{$mdChipsCtrl.deleteButtonLabel}}\
         </span>\
@@ -1101,7 +1093,7 @@ MdChipsCtrl.prototype.hasFocus = function () {
   /**
    * MDChips Directive Definition
    */
-  function MdChips ($mdTheming, $mdUtil, $compile, $log, $timeout) {
+  function MdChips ($mdTheming, $mdUtil, $compile, $log, $timeout, $$mdSvgRegistry) {
     // Run our templates through $mdUtil.processTemplate() to allow custom start/end symbols
     var templates = getTemplates();
 
@@ -1173,9 +1165,17 @@ MdChipsCtrl.prototype.hasFocus = function () {
 
       var chipTemplate = getTemplateByQuery('md-chips>md-chip-template');
 
+      var chipRemoveSelector = $mdUtil
+        .prefixer()
+        .buildList('md-chip-remove')
+        .map(function(attr) {
+          return 'md-chips>*[' + attr + ']';
+        })
+        .join(',');
+
       // Set the chip remove, chip contents and chip input templates. The link function will put
       // them on the scope for transclusion later.
-      var chipRemoveTemplate   = getTemplateByQuery('md-chips>*[md-chip-remove]') || templates.remove,
+      var chipRemoveTemplate   = getTemplateByQuery(chipRemoveSelector) || templates.remove,
           chipContentsTemplate = chipTemplate || templates.default,
           chipInputTemplate    = getTemplateByQuery('md-chips>md-autocomplete')
               || getTemplateByQuery('md-chips>input')
@@ -1209,6 +1209,8 @@ MdChipsCtrl.prototype.hasFocus = function () {
         mdChipsCtrl.chipContentsTemplate = chipContentsTemplate;
         mdChipsCtrl.chipRemoveTemplate   = chipRemoveTemplate;
         mdChipsCtrl.chipInputTemplate    = chipInputTemplate;
+
+        mdChipsCtrl.mdCloseIcon = $$mdSvgRegistry.mdClose;
 
         element
             .attr({ 'aria-hidden': true, tabindex: -1 })
@@ -1285,7 +1287,7 @@ MdChipsCtrl.prototype.hasFocus = function () {
       };
     }
   }
-  MdChips.$inject = ["$mdTheming", "$mdUtil", "$compile", "$log", "$timeout"];
+  MdChips.$inject = ["$mdTheming", "$mdUtil", "$compile", "$log", "$timeout", "$$mdSvgRegistry"];
 
 angular
     .module('material.components.chips')

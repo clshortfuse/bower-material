@@ -2,7 +2,7 @@
  * Angular Material Design
  * https://github.com/angular/material
  * @license MIT
- * v1.1.0-rc4
+ * v1.1.0-rc.5
  */
 goog.provide('ng.material.components.icon');
 goog.require('ng.material.core');
@@ -201,8 +201,13 @@ function mdIconDirective($mdIcon, $mdTheming, $mdAria, $sce) {
    */
   function postLink(scope, element, attr) {
     $mdTheming(element);
+    var lastFontIcon = attr.mdFontIcon;
+    var lastFontSet = $mdIcon.fontSet(attr.mdFontSet);
 
     prepareForFontIcon();
+
+    attr.$observe('mdFontIcon', fontIconChanged);
+    attr.$observe('mdFontSet', fontIconChanged);
 
     // Keep track of the content of the svg src so we can compare against it later to see if the
     // attribute is static (and thus safe).
@@ -243,9 +248,9 @@ function mdIconDirective($mdIcon, $mdTheming, $mdAria, $sce) {
         if (attrVal) {
           $mdIcon(attrVal)
             .then(function(svg) {
-              element.empty();
-              element.append(svg);
-            });
+            element.empty();
+            element.append(svg);
+          });
         }
 
       });
@@ -267,7 +272,28 @@ function mdIconDirective($mdIcon, $mdTheming, $mdAria, $sce) {
         if (attr.mdFontIcon) {
           element.addClass('md-font ' + attr.mdFontIcon);
         }
-        element.addClass($mdIcon.fontSet(attr.mdFontSet));
+
+        element.addClass(lastFontSet);
+      }
+    }
+
+    function fontIconChanged() {
+      if (!attr.mdSvgIcon && !attr.mdSvgSrc) {
+        if (attr.mdFontIcon) {
+          element.removeClass(lastFontIcon);
+          element.addClass(attr.mdFontIcon);
+
+          lastFontIcon = attr.mdFontIcon;
+        }
+
+        var fontSet = $mdIcon.fontSet(attr.mdFontSet);
+
+        if (lastFontSet !== fontSet) {
+          element.removeClass(lastFontSet);
+          element.addClass(fontSet);
+
+          lastFontSet = fontSet;
+        }
       }
     }
   }
@@ -283,9 +309,17 @@ function mdIconDirective($mdIcon, $mdTheming, $mdAria, $sce) {
   }
 }
 
-angular
-  .module('material.components.icon')
-  .provider('$mdIcon', MdIconProvider);
+  angular
+    .module('material.components.icon')
+    .constant('$$mdSvgRegistry', {
+        'mdTabsArrow':   'data:image/svg+xml;base64,PHN2ZyB2ZXJzaW9uPSIxLjEiIHg9IjBweCIgeT0iMHB4IiB2aWV3Qm94PSIwIDAgMjQgMjQiPjxnPjxwb2x5Z29uIHBvaW50cz0iMTUuNCw3LjQgMTQsNiA4LDEyIDE0LDE4IDE1LjQsMTYuNiAxMC44LDEyICIvPjwvZz48L3N2Zz4=',
+        'mdClose':       'data:image/svg+xml;base64,PHN2ZyB2ZXJzaW9uPSIxLjEiIHg9IjBweCIgeT0iMHB4IiB2aWV3Qm94PSIwIDAgMjQgMjQiPjxnPjxwYXRoIGQ9Ik0xOSA2LjQxbC0xLjQxLTEuNDEtNS41OSA1LjU5LTUuNTktNS41OS0xLjQxIDEuNDEgNS41OSA1LjU5LTUuNTkgNS41OSAxLjQxIDEuNDEgNS41OS01LjU5IDUuNTkgNS41OSAxLjQxLTEuNDEtNS41OS01LjU5eiIvPjwvZz48L3N2Zz4=',
+        'mdCancel':      'data:image/svg+xml;base64,PHN2ZyB2ZXJzaW9uPSIxLjEiIHg9IjBweCIgeT0iMHB4IiB2aWV3Qm94PSIwIDAgMjQgMjQiPjxnPjxwYXRoIGQ9Ik0xMiAyYy01LjUzIDAtMTAgNC40Ny0xMCAxMHM0LjQ3IDEwIDEwIDEwIDEwLTQuNDcgMTAtMTAtNC40Ny0xMC0xMC0xMHptNSAxMy41OWwtMS40MSAxLjQxLTMuNTktMy41OS0zLjU5IDMuNTktMS40MS0xLjQxIDMuNTktMy41OS0zLjU5LTMuNTkgMS40MS0xLjQxIDMuNTkgMy41OSAzLjU5LTMuNTkgMS40MSAxLjQxLTMuNTkgMy41OSAzLjU5IDMuNTl6Ii8+PC9nPjwvc3ZnPg==',
+        'mdMenu':        'data:image/svg+xml;base64,PHN2ZyB2ZXJzaW9uPSIxLjEiIHg9IjBweCIgeT0iMHB4IiB2aWV3Qm94PSIwIDAgMjQgMjQiPjxwYXRoIGQ9Ik0zLDZIMjFWOEgzVjZNMywxMUgyMVYxM0gzVjExTTMsMTZIMjFWMThIM1YxNloiIC8+PC9zdmc+',
+        'mdToggleArrow': 'data:image/svg+xml;base64,PHN2ZyB2ZXJzaW9uPSIxLjEiIHg9IjBweCIgeT0iMHB4IiB2aWV3Qm94PSIwIDAgNDggNDgiPjxwYXRoIGQ9Ik0yNCAxNmwtMTIgMTIgMi44MyAyLjgzIDkuMTctOS4xNyA5LjE3IDkuMTcgMi44My0yLjgzeiIvPjxwYXRoIGQ9Ik0wIDBoNDh2NDhoLTQ4eiIgZmlsbD0ibm9uZSIvPjwvc3ZnPg==',
+        'mdCalendar':    'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0Ij48cGF0aCBkPSJNMTkgM2gtMVYxaC0ydjJIOFYxSDZ2Mkg1Yy0xLjExIDAtMS45OS45LTEuOTkgMkwzIDE5YzAgMS4xLjg5IDIgMiAyaDE0YzEuMSAwIDItLjkgMi0yVjVjMC0xLjEtLjktMi0yLTJ6bTAgMTZINVY4aDE0djExek03IDEwaDV2NUg3eiIvPjwvc3ZnPg=='
+    })
+    .provider('$mdIcon', MdIconProvider);
 
 /**
  * @ngdoc service
@@ -303,6 +337,23 @@ angular
  * internally by the `$mdIcon` service using the `$templateRequest` service. When an SVG is
  * requested by name/ID, the `$mdIcon` service searches its registry for the associated source URL;
  * that URL is used to on-demand load and parse the SVG dynamically.
+ *
+ * The `$templateRequest` service expects the icons source to be loaded over trusted URLs.<br/>
+ * This means, when loading icons from an external URL, you have to trust the URL in the `$sceDelegateProvider`.
+ *
+ * <hljs lang="js">
+ *   app.config(function($sceDelegateProvider) {
+ *     $sceDelegateProvider.resourceUrlWhitelist([
+ *       // Adding 'self' to the whitelist, will allow requests from the current origin.
+ *       'self',
+ *       // Using double asterisks here, will allow all URLs to load.
+ *       // We recommend to only specify the given domain you want to allow.
+ *       '**'
+ *     ]);
+ *   });
+ * </hljs>
+ *
+ * Read more about the [$sceDelegateProvider](https://docs.angularjs.org/api/ng/provider/$sceDelegateProvider).
  *
  * **Notice:** Most font-icons libraries do not support ligatures (for example `fontawesome`).<br/>
  *  In such cases you are not able to use the icon's ligature name - Like so:
@@ -601,50 +652,7 @@ MdIconProvider.prototype = {
     return this;
   },
 
-  preloadIcons: function($templateCache) {
-    var iconProvider = this;
-    var svgRegistry = [
-      {
-        id: 'md-tabs-arrow',
-        url: 'md-tabs-arrow.svg',
-        svg: '<svg version="1.1" x="0px" y="0px" viewBox="0 0 24 24"><g><polygon points="15.4,7.4 14,6 8,12 14,18 15.4,16.6 10.8,12 "/></g></svg>'
-      },
-      {
-        id: 'md-close',
-        url: 'md-close.svg',
-        svg: '<svg version="1.1" x="0px" y="0px" viewBox="0 0 24 24"><g><path d="M19 6.41l-1.41-1.41-5.59 5.59-5.59-5.59-1.41 1.41 5.59 5.59-5.59 5.59 1.41 1.41 5.59-5.59 5.59 5.59 1.41-1.41-5.59-5.59z"/></g></svg>'
-      },
-      {
-        id: 'md-cancel',
-        url: 'md-cancel.svg',
-        svg: '<svg version="1.1" x="0px" y="0px" viewBox="0 0 24 24"><g><path d="M12 2c-5.53 0-10 4.47-10 10s4.47 10 10 10 10-4.47 10-10-4.47-10-10-10zm5 13.59l-1.41 1.41-3.59-3.59-3.59 3.59-1.41-1.41 3.59-3.59-3.59-3.59 1.41-1.41 3.59 3.59 3.59-3.59 1.41 1.41-3.59 3.59 3.59 3.59z"/></g></svg>'
-      },
-      {
-        id: 'md-menu',
-        url: 'md-menu.svg',
-        svg: '<svg version="1.1" x="0px" y="0px" viewBox="0 0 24 24"><path d="M3,6H21V8H3V6M3,11H21V13H3V11M3,16H21V18H3V16Z" /></svg>'
-      },
-      {
-        id: 'md-toggle-arrow',
-        url: 'md-toggle-arrow-svg',
-        svg: '<svg version="1.1" x="0px" y="0px" viewBox="0 0 48 48"><path d="M24 16l-12 12 2.83 2.83 9.17-9.17 9.17 9.17 2.83-2.83z"/><path d="M0 0h48v48h-48z" fill="none"/></svg>'
-      },
-      {
-        id: 'md-calendar',
-        url: 'md-calendar.svg',
-        svg: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/></svg>'
-      }
-    ];
-
-    svgRegistry.forEach(function(asset) {
-      iconProvider.icon(asset.id, asset.url);
-      $templateCache.put(asset.url, asset.svg);
-    });
-
-  },
-
   $get: ['$templateRequest', '$q', '$log', '$templateCache', '$mdUtil', '$sce', function($templateRequest, $q, $log, $templateCache, $mdUtil, $sce) {
-    this.preloadIcons($templateCache);
     return MdIconService(config, $templateRequest, $q, $log, $mdUtil, $sce);
   }]
 };

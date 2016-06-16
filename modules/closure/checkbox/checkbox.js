@@ -2,7 +2,7 @@
  * Angular Material Design
  * https://github.com/angular/material
  * @license MIT
- * v1.1.0-rc4
+ * v1.1.0-rc.5
  */
 goog.provide('ng.material.components.checkbox');
 goog.require('ng.material.core');
@@ -40,7 +40,12 @@ angular
  *     If a truthy expression or no value is passed in the checkbox renders in the md-indeterminate state.
  *     If falsy expression is passed in it just looks like a normal unchecked checkbox.
  *     The indeterminate, checked, and unchecked states are mutually exclusive. A box cannot be in any two states at the same time.
- *     When a checkbox is indeterminate that overrides any checked/unchecked rendering logic.
+ *     Adding the 'md-indeterminate' attribute overrides any checked/unchecked rendering logic.
+ *     When using the 'md-indeterminate' attribute use 'ng-checked' to define rendering logic instead of using 'ng-model'.
+ * @param {expression=} ng-checked If this expression evaluates as truthy, the 'md-checked' css class is added to the checkbox and it
+ *     will appear checked.
+ * @param md-spacing {string=} Override spacing between icon and text. Default is 36px. Use `wide` for 48px.
+ *     Use `extra-wide` for 56px.
  *
  * @usage
  * <hljs lang="html">
@@ -177,7 +182,9 @@ function MdCheckboxDirective(inputDirective, $mdAria, $mdConstant, $mdTheming, $
       }
 
       function listener(ev) {
-        if (element[0].hasAttribute('disabled')) {
+        // skipToggle boolean is used by the switch directive to prevent the click event
+        // when releasing the drag. There will be always a click if releasing the drag over the checkbox
+        if (element[0].hasAttribute('disabled') || scope.skipToggle) {
           return;
         }
 
