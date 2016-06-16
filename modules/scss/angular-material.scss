@@ -1616,227 +1616,6 @@ md-bottom-sheet {
   }
 }
 
-$card-padding: 16px !default;
-$card-box-shadow: $whiteframe-shadow-1dp !default;
-
-md-card {
-  box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  margin: $baseline-grid;
-
-  box-shadow: $card-box-shadow;
-
-  md-card-header {
-    padding: $card-padding;
-    display: flex;
-    flex-direction: row;
-
-    &:first-child {
-      md-card-avatar {
-       @include rtl-prop(margin-right, margin-left, 12px);
-      }
-    }
-
-    &:last-child {
-      md-card-avatar {
-        @include rtl-prop(margin-left, margin-right, 12px);
-      }
-    }
-
-    md-card-avatar {
-      width: 40px;
-      height: 40px;
-
-      .md-user-avatar,
-      md-icon{
-        border-radius: 50%;
-      }
-
-      md-icon {
-        padding: 8px;
-      }
-
-      & + md-card-header-text {
-        max-height: 40px;
-
-        .md-title {
-          font-size: 14px;
-        }
-      }
-    }
-
-    md-card-header-text {
-      display: flex;
-      flex: 1;
-      flex-direction: column;
-
-      .md-subhead {
-        font-size: 14px;
-      }
-    }
-  }
-
-  > img,
-  > :not(md-card-content) img {
-    box-sizing: border-box;
-    display: flex;
-    flex: 0 0 auto;
-    width: 100%;
-    height: auto;
-  }
-
-  md-card-title {
-    padding: 3 * $card-padding / 2 $card-padding $card-padding;
-    display: flex;
-    flex: 1 1 auto;
-    flex-direction: row;
-
-    & + md-card-content {
-      padding-top: 0;
-    }
-
-    md-card-title-text {
-      flex: 1;
-      flex-direction: column;
-      display: flex;
-
-      .md-subhead {
-        padding-top: 0;
-        font-size: 14px;
-      }
-
-      &:only-child {
-        .md-subhead {
-          padding-top: 3 * $card-padding / 4;
-        }
-      }
-    }
-
-    md-card-title-media {
-      margin-top: - $card-padding / 2;
-
-      .md-media-sm {
-        height: 80px;
-        width: 80px;
-      }
-      .md-media-md {
-        height: 112px;
-        width: 112px;
-      }
-      .md-media-lg {
-        height: 152px;
-        width: 152px;
-      }
-    }
-  }
-
-  md-card-content {
-    display: block;
-    padding: $card-padding;
-
-    & > p {
-      &:first-child {
-        margin-top: 0;
-      }
-
-      &:last-child {
-        margin-bottom: 0;
-      }
-    }
-
-    .md-media-xl {
-      height: 240px;
-      width: 240px;
-    }
-  }
-
-  .md-actions, md-card-actions {
-    margin: $baseline-grid;
-
-    &.layout-column {
-      .md-button {
-        &:not(.md-icon-button) {
-          margin: $baseline-grid / 4 0;
-
-          &:first-of-type {
-            margin-top: 0;
-          }
-
-          &:last-of-type {
-            margin-bottom: 0;
-          }
-        }
-
-        &.md-icon-button {
-          margin-top: 3 * $baseline-grid / 4;
-          margin-bottom: 3 * $baseline-grid / 4;
-        }
-      }
-    }
-
-    md-card-icon-actions {
-      flex: 1;
-      justify-content: flex-start;
-      display: flex;
-      flex-direction: row;
-    }
-
-    &:not(.layout-column) .md-button {
-      &:not(.md-icon-button) {
-        margin: 0 $baseline-grid * .5;
-
-        &:first-of-type {
-          @include rtl-prop(margin-left, margin-right, 0);
-        }
-
-        &:last-of-type {
-          @include rtl-prop(margin-right, margin-left, 0);
-        }
-      }
-
-      &.md-icon-button {
-        margin-left: 3 * $baseline-grid / 4;
-        margin-right: 3 * $baseline-grid / 4;
-
-        &:first-of-type {
-          @include rtl-prop(margin-left, margin-right, 3 * $baseline-grid / 2);
-        }
-
-        &:last-of-type {
-          @include rtl-prop(margin-right, margin-left, 3 * $baseline-grid / 2);
-        }
-      }
-
-      & + md-card-icon-actions {
-        flex: 1;
-        justify-content: flex-end;
-        display: flex;
-        flex-direction: row;
-      }
-    }
-  }
-
-  md-card-footer {
-    margin-top: auto;
-    padding: $card-padding;
-  }
-}
-
-@media screen and (-ms-high-contrast: active) {
-  md-card {
-    border: 1px solid #fff;
-  }
-}
-
-.md-image-no-fill {
-  > img {
-    width: auto;
-    height: auto;
-  }
-}
-
-
 $button-border-radius: 3px !default;
 $button-fab-border-radius: 50% !default;
 $button-icon-border-radius: $button-fab-border-radius !default;
@@ -2084,6 +1863,227 @@ button.md-button.md-fab {
     border: 1px solid #fff;
   }
 }
+
+$card-padding: 16px !default;
+$card-box-shadow: $whiteframe-shadow-1dp !default;
+
+md-card {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  margin: $baseline-grid;
+
+  box-shadow: $card-box-shadow;
+
+  md-card-header {
+    padding: $card-padding;
+    display: flex;
+    flex-direction: row;
+
+    &:first-child {
+      md-card-avatar {
+       @include rtl-prop(margin-right, margin-left, 12px);
+      }
+    }
+
+    &:last-child {
+      md-card-avatar {
+        @include rtl-prop(margin-left, margin-right, 12px);
+      }
+    }
+
+    md-card-avatar {
+      width: 40px;
+      height: 40px;
+
+      .md-user-avatar,
+      md-icon{
+        border-radius: 50%;
+      }
+
+      md-icon {
+        padding: 8px;
+      }
+
+      & + md-card-header-text {
+        max-height: 40px;
+
+        .md-title {
+          font-size: 14px;
+        }
+      }
+    }
+
+    md-card-header-text {
+      display: flex;
+      flex: 1;
+      flex-direction: column;
+
+      .md-subhead {
+        font-size: 14px;
+      }
+    }
+  }
+
+  > img,
+  > :not(md-card-content) img {
+    box-sizing: border-box;
+    display: flex;
+    flex: 0 0 auto;
+    width: 100%;
+    height: auto;
+  }
+
+  md-card-title {
+    padding: 3 * $card-padding / 2 $card-padding $card-padding;
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: row;
+
+    & + md-card-content {
+      padding-top: 0;
+    }
+
+    md-card-title-text {
+      flex: 1;
+      flex-direction: column;
+      display: flex;
+
+      .md-subhead {
+        padding-top: 0;
+        font-size: 14px;
+      }
+
+      &:only-child {
+        .md-subhead {
+          padding-top: 3 * $card-padding / 4;
+        }
+      }
+    }
+
+    md-card-title-media {
+      margin-top: - $card-padding / 2;
+
+      .md-media-sm {
+        height: 80px;
+        width: 80px;
+      }
+      .md-media-md {
+        height: 112px;
+        width: 112px;
+      }
+      .md-media-lg {
+        height: 152px;
+        width: 152px;
+      }
+    }
+  }
+
+  md-card-content {
+    display: block;
+    padding: $card-padding;
+
+    & > p {
+      &:first-child {
+        margin-top: 0;
+      }
+
+      &:last-child {
+        margin-bottom: 0;
+      }
+    }
+
+    .md-media-xl {
+      height: 240px;
+      width: 240px;
+    }
+  }
+
+  .md-actions, md-card-actions {
+    margin: $baseline-grid;
+
+    &.layout-column {
+      .md-button {
+        &:not(.md-icon-button) {
+          margin: $baseline-grid / 4 0;
+
+          &:first-of-type {
+            margin-top: 0;
+          }
+
+          &:last-of-type {
+            margin-bottom: 0;
+          }
+        }
+
+        &.md-icon-button {
+          margin-top: 3 * $baseline-grid / 4;
+          margin-bottom: 3 * $baseline-grid / 4;
+        }
+      }
+    }
+
+    md-card-icon-actions {
+      flex: 1;
+      justify-content: flex-start;
+      display: flex;
+      flex-direction: row;
+    }
+
+    &:not(.layout-column) .md-button {
+      &:not(.md-icon-button) {
+        margin: 0 $baseline-grid * .5;
+
+        &:first-of-type {
+          @include rtl-prop(margin-left, margin-right, 0);
+        }
+
+        &:last-of-type {
+          @include rtl-prop(margin-right, margin-left, 0);
+        }
+      }
+
+      &.md-icon-button {
+        margin-left: 3 * $baseline-grid / 4;
+        margin-right: 3 * $baseline-grid / 4;
+
+        &:first-of-type {
+          @include rtl-prop(margin-left, margin-right, 3 * $baseline-grid / 2);
+        }
+
+        &:last-of-type {
+          @include rtl-prop(margin-right, margin-left, 3 * $baseline-grid / 2);
+        }
+      }
+
+      & + md-card-icon-actions {
+        flex: 1;
+        justify-content: flex-end;
+        display: flex;
+        flex-direction: row;
+      }
+    }
+  }
+
+  md-card-footer {
+    margin-top: auto;
+    padding: $card-padding;
+  }
+}
+
+@media screen and (-ms-high-contrast: active) {
+  md-card {
+    border: 1px solid #fff;
+  }
+}
+
+.md-image-no-fill {
+  > img {
+    width: auto;
+    height: auto;
+  }
+}
+
 
 //$checkbox-width: 18px !default;
 //$checkbox-height: $checkbox-width !default;
@@ -4968,6 +4968,374 @@ md-progress-circular {
     }
 }
 
+$select-checkbox-border-radius: 2px !default;
+$select-checkbox-border-width: 2px !default;
+$select-checkbox-width: rem(1.4) !default;
+$select-option-height: 48px !default;
+$select-option-padding: 16px !default;
+$select-container-padding: 16px !default;
+$select-container-transition-duration: 350ms !default;
+$select-value-padding-top: 6px;
+$select-value-padding-bottom: 4px;
+$select-max-visible-options: 5 !default;
+
+// from input.scss
+$input-label-default-offset: 24px !default;
+$default-bottom-margin: 11px !default;
+
+$md-inline-alignment: $input-label-default-offset;
+
+// Fixes the animations with the floating label when select is inside an input container
+md-input-container {
+  &:not([md-no-float]) {
+    ._md-select-placeholder span:first-child {
+      transform: translate3d(0, 0, 0);
+      transition: transform $swift-ease-out-timing-function $swift-ease-out-duration,
+                  font-size $swift-ease-out-duration $swift-ease-out-timing-function;
+      font-size: inherit;
+    }
+  }
+  &.md-input-focused {
+    &:not([md-no-float]) {
+      ._md-select-placeholder span:first-child {
+        transform: translateY(-24px) translate(-1px);
+        transition: transform $swift-ease-out-timing-function $swift-ease-out-duration,
+                    font-size $swift-ease-out-duration $swift-ease-out-timing-function;
+        font-size: 12px;
+      }
+      &:not(.md-input-has-value) {
+        ._md-select-label:not(.md-no-float) {
+          opacity: 0;
+        }
+      }
+    }
+  }
+}
+
+._md-select-menu-container {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: $z-index-select;
+  opacity: 0;
+  display: none;
+
+  // Fix 1px alignment issue to line up with text inputs (and spec)
+  transform: translateY(-1px);
+
+  // Don't let the user select a new choice while it's animating
+  &:not(._md-clickable) {
+    pointer-events: none;
+  }
+
+  md-progress-circular {
+    display: table;
+    margin: 3*$baseline-grid auto !important;
+  }
+
+
+  // enter: md-select scales in, then options fade in.
+  &._md-active {
+    display: block;
+    opacity: 1;
+    md-select-menu {
+      transition: $swift-ease-out;
+      transition-duration: 150ms;
+      > * {
+        opacity: 1;
+        transition: $swift-ease-in;
+        transition-duration: 150ms;
+        transition-delay: 100ms;
+      }
+    }
+  }
+
+  // leave: the container fades out
+  &._md-leave {
+    opacity: 0;
+    transition: $swift-ease-in;
+    transition-duration: 250ms;
+  }
+}
+
+
+md-input-container.md-input-has-label > md-select {
+  margin-top: $input-label-default-offset;
+  margin-bottom: $default-bottom-margin;
+}
+
+md-input-container.md-input-has-messages > md-select {
+  margin-bottom: 4px;
+}
+
+// Show the asterisk on the placeholder if the element is required
+//
+// NOTE: When the input has a value and uses a floating label, the floating label will show the
+// asterisk denoting that it is required
+md-input-container:not(.md-input-has-value) {
+  md-select[required], md-select.ng-required {
+    ._md-select-value span:first-child:after {
+      content: ' *';
+      font-size: 13px;
+      vertical-align: top;
+    }
+  }
+}
+
+md-select {
+  display: flex;
+
+  &[required], &.ng-required {
+    &.ng-invalid {
+      ._md-select-value span:first-child:after {
+        content: ' *';
+        font-size: 13px;
+        vertical-align: top;
+      }
+    }
+  }
+
+  &[disabled] ._md-select-value {
+    background-position: 0 bottom;
+    // This background-size is coordinated with a linear-gradient set in select-theme.scss
+    // to create a dotted line under the input.
+    background-size: 4px 1px;
+    background-repeat: repeat-x;
+    // Add to padding-bottom to keep dotted line aligned with other bottom borders
+    // Sub from padding-top to keep height consistent
+    // Translate text 1px up to keep in alignment
+    padding-bottom: $select-value-padding-bottom + 1;
+    padding-top: $select-value-padding-top - 1;
+    transform: translate3d(0, 1px, 0);
+  }
+
+  &:focus {
+    outline: none;
+  }
+  &[disabled]:hover {
+    cursor: default;
+  }
+  &:not([disabled]) {
+    &:hover {
+      cursor: pointer
+    }
+    &.ng-invalid.ng-touched:not(:focus) {
+      ._md-select-value {
+        border-bottom: 1px solid;
+      }
+    }
+    &:focus {
+      ._md-select-value {
+        border-bottom-width: 2px;
+        border-bottom-style: solid;
+        padding-bottom: $select-value-padding-bottom - 1;
+      }
+    }
+  }
+}
+
+._md-select-value {
+  display: flex;
+  align-items: center;
+  padding-top: $select-value-padding-top;
+  padding-bottom: $select-value-padding-bottom;
+  border-bottom-width: 1px;
+  border-bottom-style: solid;
+  background-color: rgba(0,0,0,0);
+  position: relative;
+  box-sizing: content-box;
+  min-width: 11 * $baseline-grid;
+  min-height: 26px;
+  margin-bottom: auto;
+  -ms-flex-item-align: start; // workaround for margin-bottom: auto
+  flex-grow: 1;
+
+
+  > span:not(._md-select-icon) {
+    max-width: 100%;
+    flex: 1 1 auto;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
+
+    ._md-text {
+      display: inline;
+    }
+  }
+
+  ._md-select-icon {
+    display: block;
+    align-items: flex-end;
+    text-align: end;
+    width: 3 * $baseline-grid;
+    transform: translate3d(0, -2px, 0);
+    font-size: 1.2rem;
+  }
+
+  ._md-select-icon:after {
+    display: block;
+    content: '\25BC';
+    position: relative;
+    top: 2px;
+    @include rtl(right, -4px, auto);
+    @include rtl(left, auto, -4px);
+    speak: none;
+    font-size: 16px;
+    transform: scaleY(0.5);
+  }
+
+  &._md-select-placeholder {
+    display: flex;
+    order: 1;
+    pointer-events: none;
+    -webkit-font-smoothing: antialiased;
+    z-index: 1;
+  }
+}
+
+md-select-menu {
+  display: flex;
+  flex-direction: column;
+  &.md-reverse {
+    flex-direction: column-reverse;
+  }
+
+  &:not(._md-overflow) {
+    md-content {
+      padding-top: $baseline-grid;
+      padding-bottom: $baseline-grid;
+    }
+  }
+
+  box-shadow: $whiteframe-shadow-1dp;
+  max-height: ($select-option-height * $select-max-visible-options) + 2 * $baseline-grid;
+  min-height: $select-option-height;
+  overflow-y: hidden;
+
+  @include rtl(transform-origin, left top, right top);
+
+  transform: scale(1.0);
+
+  md-content {
+    min-width: 136px;
+    min-height: $select-option-height;
+    max-height: ($select-option-height * $select-max-visible-options) + 2 * $baseline-grid;
+    overflow-y: auto;
+  }
+  > * {
+    opacity: 0;
+  }
+}
+
+md-option {
+  cursor: pointer;
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: auto;
+  transition: background 0.15s linear;
+
+  &[disabled] {
+    cursor: default;
+  }
+
+  &:focus {
+    outline: none;
+  }
+
+  ._md-text {
+    @include not-selectable();
+    width: auto;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  padding: 0 $select-option-padding 0 $select-option-padding;
+  height: $select-option-height;
+}
+
+md-optgroup {
+  display: block;
+  label {
+    display: block;
+    font-size: rem(1.4);
+    text-transform: uppercase;
+    padding: $baseline-grid * 2;
+    font-weight: 500;
+  }
+  md-option {
+    padding-left: $select-option-padding * 2;
+    padding-right: $select-option-padding * 2;
+  }
+}
+
+@media screen and (-ms-high-contrast: active) {
+  ._md-select-backdrop {
+    background-color: transparent;
+  }
+  md-select-menu {
+    border: 1px solid #fff;
+  }
+}
+
+md-select-menu[multiple] {
+  md-option._md-checkbox-enabled {
+    @include rtl(padding-left, $select-option-padding * 2.5, $select-option-padding);
+    @include rtl(padding-right, $select-option-padding, $select-option-padding * 2.5);
+
+    @include checkbox-container('[selected]');
+
+    ._md-container {
+      @include rtl(margin-left, $select-option-padding * (2 / 3), auto);
+      @include rtl(margin-right, auto, $select-option-padding * (2 / 3));
+    }
+  }
+}
+
+.md-dense md-input-container,
+md-input-container.md-dense {
+  ._md-select-value {
+    padding-top: 0px;
+    padding-bottom: 4px;
+    font-size: 13px;
+  }
+
+  md-select:not([disabled]).ng-invalid.ng-dirty,
+  md-select:not([disabled]):focus {
+    ._md-select-value {
+      padding-bottom: 3px;
+    }
+  }
+
+}
+
+md-input-container.md-input-invalid {
+  md-select:not(:focus) {
+    ._md-select-value {
+      border-bottom: 1px solid;
+      padding-bottom: $select-value-padding-bottom;
+    }
+  }
+}
+
+.layout-row,
+.layout-xs-row, .layout-gt-xs-row,
+.layout-sm-row, .layout-gt-sm-row,
+.layout-md-row, .layout-gt-md-row,
+.layout-lg-row, .layout-gt-lg-row,
+.layout-xl-row {
+  & > md-select:not(:last-child), {
+    @include rtl(margin-left, 0, $select-container-padding);
+    @include rtl(margin-right, $select-container-padding, 0);
+  }
+
+  &.md-inline-form > md-select,
+  .md-inline-form & > md-select {
+    margin-top: $md-inline-alignment;
+    margin-bottom: auto;
+  }
+}
+
 $progress-linear-bar-height: 5px !default;
 
 md-progress-linear {
@@ -5866,442 +6234,6 @@ md-slider-container {
   }
 }
 
-$subheader-line-height: 1em !default;
-$subheader-font-size: rem(1.4) !default;
-$subheader-padding: ($baseline-grid * 2) !default;
-$subheader-font-weight: 500 !default;
-$subheader-margin: 0 0 0 0 !default;
-$subheader-sticky-shadow: 0px 2px 4px 0 rgba(0,0,0,0.16) !default;
-
-@keyframes subheaderStickyHoverIn {
-  0% {
-    box-shadow: 0 0 0 0 transparent;
-  }
-  100% {
-    box-shadow: $subheader-sticky-shadow;
-  }
-}
-@keyframes subheaderStickyHoverOut {
-  0% {
-    box-shadow: $subheader-sticky-shadow;
-  }
-  100% {
-    box-shadow: 0 0 0 0 transparent;
-  }
-}
-
-._md-subheader-wrapper {
-
-  &:not(.md-sticky-no-effect) {
-    .md-subheader {
-      margin: 0;
-    }
-
-    transition: 0.2s ease-out margin;
-
-    &.md-sticky-clone {
-      z-index: 2;
-    }
-
-    &[sticky-state="active"] {
-      margin-top: -2px;
-    }
-
-    &:not(.md-sticky-clone)[sticky-prev-state="active"] ._md-subheader-inner:after {
-      animation: subheaderStickyHoverOut 0.3s ease-out both;
-    }
-  }
-
-}
-
-.md-subheader {
-  display: block;
-  font-size: $subheader-font-size;
-  font-weight: $subheader-font-weight;
-  line-height: $subheader-line-height;
-  margin: $subheader-margin;
-  position: relative;
-
-  ._md-subheader-inner {
-    display: block;
-    padding: $subheader-padding;
-  }
-
-  ._md-subheader-content {
-    display: block;
-    z-index: 1;
-    position: relative;
-  }
-}
-
-$select-checkbox-border-radius: 2px !default;
-$select-checkbox-border-width: 2px !default;
-$select-checkbox-width: rem(1.4) !default;
-$select-option-height: 48px !default;
-$select-option-padding: 16px !default;
-$select-container-padding: 16px !default;
-$select-container-transition-duration: 350ms !default;
-$select-value-padding-top: 6px;
-$select-value-padding-bottom: 4px;
-$select-max-visible-options: 5 !default;
-
-// from input.scss
-$input-label-default-offset: 24px !default;
-$default-bottom-margin: 11px !default;
-
-$md-inline-alignment: $input-label-default-offset;
-
-// Fixes the animations with the floating label when select is inside an input container
-md-input-container {
-  &:not([md-no-float]) {
-    ._md-select-placeholder span:first-child {
-      transform: translate3d(0, 0, 0);
-      transition: transform $swift-ease-out-timing-function $swift-ease-out-duration,
-                  font-size $swift-ease-out-duration $swift-ease-out-timing-function;
-      font-size: inherit;
-    }
-  }
-  &.md-input-focused {
-    &:not([md-no-float]) {
-      ._md-select-placeholder span:first-child {
-        transform: translateY(-24px) translate(-1px);
-        transition: transform $swift-ease-out-timing-function $swift-ease-out-duration,
-                    font-size $swift-ease-out-duration $swift-ease-out-timing-function;
-        font-size: 12px;
-      }
-      &:not(.md-input-has-value) {
-        ._md-select-label:not(.md-no-float) {
-          opacity: 0;
-        }
-      }
-    }
-  }
-}
-
-._md-select-menu-container {
-  position: fixed;
-  left: 0;
-  top: 0;
-  z-index: $z-index-select;
-  opacity: 0;
-  display: none;
-
-  // Fix 1px alignment issue to line up with text inputs (and spec)
-  transform: translateY(-1px);
-
-  // Don't let the user select a new choice while it's animating
-  &:not(._md-clickable) {
-    pointer-events: none;
-  }
-
-  md-progress-circular {
-    display: table;
-    margin: 3*$baseline-grid auto !important;
-  }
-
-
-  // enter: md-select scales in, then options fade in.
-  &._md-active {
-    display: block;
-    opacity: 1;
-    md-select-menu {
-      transition: $swift-ease-out;
-      transition-duration: 150ms;
-      > * {
-        opacity: 1;
-        transition: $swift-ease-in;
-        transition-duration: 150ms;
-        transition-delay: 100ms;
-      }
-    }
-  }
-
-  // leave: the container fades out
-  &._md-leave {
-    opacity: 0;
-    transition: $swift-ease-in;
-    transition-duration: 250ms;
-  }
-}
-
-
-md-input-container.md-input-has-label > md-select {
-  margin-top: $input-label-default-offset;
-  margin-bottom: $default-bottom-margin;
-}
-
-md-input-container.md-input-has-messages > md-select {
-  margin-bottom: 4px;
-}
-
-// Show the asterisk on the placeholder if the element is required
-//
-// NOTE: When the input has a value and uses a floating label, the floating label will show the
-// asterisk denoting that it is required
-md-input-container:not(.md-input-has-value) {
-  md-select[required], md-select.ng-required {
-    ._md-select-value span:first-child:after {
-      content: ' *';
-      font-size: 13px;
-      vertical-align: top;
-    }
-  }
-}
-
-md-select {
-  display: flex;
-
-  &[required], &.ng-required {
-    &.ng-invalid {
-      ._md-select-value span:first-child:after {
-        content: ' *';
-        font-size: 13px;
-        vertical-align: top;
-      }
-    }
-  }
-
-  &[disabled] ._md-select-value {
-    background-position: 0 bottom;
-    // This background-size is coordinated with a linear-gradient set in select-theme.scss
-    // to create a dotted line under the input.
-    background-size: 4px 1px;
-    background-repeat: repeat-x;
-    // Add to padding-bottom to keep dotted line aligned with other bottom borders
-    // Sub from padding-top to keep height consistent
-    // Translate text 1px up to keep in alignment
-    padding-bottom: $select-value-padding-bottom + 1;
-    padding-top: $select-value-padding-top - 1;
-    transform: translate3d(0, 1px, 0);
-  }
-
-  &:focus {
-    outline: none;
-  }
-  &[disabled]:hover {
-    cursor: default;
-  }
-  &:not([disabled]) {
-    &:hover {
-      cursor: pointer
-    }
-    &.ng-invalid.ng-touched:not(:focus) {
-      ._md-select-value {
-        border-bottom: 1px solid;
-      }
-    }
-    &:focus {
-      ._md-select-value {
-        border-bottom-width: 2px;
-        border-bottom-style: solid;
-        padding-bottom: $select-value-padding-bottom - 1;
-      }
-    }
-  }
-}
-
-._md-select-value {
-  display: flex;
-  align-items: center;
-  padding-top: $select-value-padding-top;
-  padding-bottom: $select-value-padding-bottom;
-  border-bottom-width: 1px;
-  border-bottom-style: solid;
-  background-color: rgba(0,0,0,0);
-  position: relative;
-  box-sizing: content-box;
-  min-width: 11 * $baseline-grid;
-  min-height: 26px;
-  margin-bottom: auto;
-  -ms-flex-item-align: start; // workaround for margin-bottom: auto
-  flex-grow: 1;
-
-
-  > span:not(._md-select-icon) {
-    max-width: 100%;
-    flex: 1 1 auto;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    overflow: hidden;
-
-    ._md-text {
-      display: inline;
-    }
-  }
-
-  ._md-select-icon {
-    display: block;
-    align-items: flex-end;
-    text-align: end;
-    width: 3 * $baseline-grid;
-    transform: translate3d(0, -2px, 0);
-    font-size: 1.2rem;
-  }
-
-  ._md-select-icon:after {
-    display: block;
-    content: '\25BC';
-    position: relative;
-    top: 2px;
-    @include rtl(right, -4px, auto);
-    @include rtl(left, auto, -4px);
-    speak: none;
-    font-size: 16px;
-    transform: scaleY(0.5);
-  }
-
-  &._md-select-placeholder {
-    display: flex;
-    order: 1;
-    pointer-events: none;
-    -webkit-font-smoothing: antialiased;
-    z-index: 1;
-  }
-}
-
-md-select-menu {
-  display: flex;
-  flex-direction: column;
-  &.md-reverse {
-    flex-direction: column-reverse;
-  }
-
-  &:not(._md-overflow) {
-    md-content {
-      padding-top: $baseline-grid;
-      padding-bottom: $baseline-grid;
-    }
-  }
-
-  box-shadow: $whiteframe-shadow-1dp;
-  max-height: ($select-option-height * $select-max-visible-options) + 2 * $baseline-grid;
-  min-height: $select-option-height;
-  overflow-y: hidden;
-
-  @include rtl(transform-origin, left top, right top);
-
-  transform: scale(1.0);
-
-  md-content {
-    min-width: 136px;
-    min-height: $select-option-height;
-    max-height: ($select-option-height * $select-max-visible-options) + 2 * $baseline-grid;
-    overflow-y: auto;
-  }
-  > * {
-    opacity: 0;
-  }
-}
-
-md-option {
-  cursor: pointer;
-  position: relative;
-  display: flex;
-  align-items: center;
-  width: auto;
-  transition: background 0.15s linear;
-
-  &[disabled] {
-    cursor: default;
-  }
-
-  &:focus {
-    outline: none;
-  }
-
-  ._md-text {
-    @include not-selectable();
-    width: auto;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  padding: 0 $select-option-padding 0 $select-option-padding;
-  height: $select-option-height;
-}
-
-md-optgroup {
-  display: block;
-  label {
-    display: block;
-    font-size: rem(1.4);
-    text-transform: uppercase;
-    padding: $baseline-grid * 2;
-    font-weight: 500;
-  }
-  md-option {
-    padding-left: $select-option-padding * 2;
-    padding-right: $select-option-padding * 2;
-  }
-}
-
-@media screen and (-ms-high-contrast: active) {
-  ._md-select-backdrop {
-    background-color: transparent;
-  }
-  md-select-menu {
-    border: 1px solid #fff;
-  }
-}
-
-md-select-menu[multiple] {
-  md-option._md-checkbox-enabled {
-    @include rtl(padding-left, $select-option-padding * 2.5, $select-option-padding);
-    @include rtl(padding-right, $select-option-padding, $select-option-padding * 2.5);
-
-    @include checkbox-container('[selected]');
-
-    ._md-container {
-      @include rtl(margin-left, $select-option-padding * (2 / 3), auto);
-      @include rtl(margin-right, auto, $select-option-padding * (2 / 3));
-    }
-  }
-}
-
-.md-dense md-input-container,
-md-input-container.md-dense {
-  ._md-select-value {
-    padding-top: 0px;
-    padding-bottom: 4px;
-    font-size: 13px;
-  }
-
-  md-select:not([disabled]).ng-invalid.ng-dirty,
-  md-select:not([disabled]):focus {
-    ._md-select-value {
-      padding-bottom: 3px;
-    }
-  }
-
-}
-
-md-input-container.md-input-invalid {
-  md-select:not(:focus) {
-    ._md-select-value {
-      border-bottom: 1px solid;
-      padding-bottom: $select-value-padding-bottom;
-    }
-  }
-}
-
-.layout-row,
-.layout-xs-row, .layout-gt-xs-row,
-.layout-sm-row, .layout-gt-sm-row,
-.layout-md-row, .layout-gt-md-row,
-.layout-lg-row, .layout-gt-lg-row,
-.layout-xl-row {
-  & > md-select:not(:last-child), {
-    @include rtl(margin-left, 0, $select-container-padding);
-    @include rtl(margin-right, $select-container-padding, 0);
-  }
-
-  &.md-inline-form > md-select,
-  .md-inline-form & > md-select {
-    margin-top: $md-inline-alignment;
-    margin-bottom: auto;
-  }
-}
-
 $sidenav-mobile-width: 320px !default;
 $sidenav-desktop-width: 400px !default;
 $sidenav-min-space: 56px !default;
@@ -6418,6 +6350,74 @@ md-sidenav {
   }
   .md-sidenav-right {
     border-left: 1px solid #fff;
+  }
+}
+
+$subheader-line-height: 1em !default;
+$subheader-font-size: rem(1.4) !default;
+$subheader-padding: ($baseline-grid * 2) !default;
+$subheader-font-weight: 500 !default;
+$subheader-margin: 0 0 0 0 !default;
+$subheader-sticky-shadow: 0px 2px 4px 0 rgba(0,0,0,0.16) !default;
+
+@keyframes subheaderStickyHoverIn {
+  0% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+  100% {
+    box-shadow: $subheader-sticky-shadow;
+  }
+}
+@keyframes subheaderStickyHoverOut {
+  0% {
+    box-shadow: $subheader-sticky-shadow;
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+._md-subheader-wrapper {
+
+  &:not(.md-sticky-no-effect) {
+    .md-subheader {
+      margin: 0;
+    }
+
+    transition: 0.2s ease-out margin;
+
+    &.md-sticky-clone {
+      z-index: 2;
+    }
+
+    &[sticky-state="active"] {
+      margin-top: -2px;
+    }
+
+    &:not(.md-sticky-clone)[sticky-prev-state="active"] ._md-subheader-inner:after {
+      animation: subheaderStickyHoverOut 0.3s ease-out both;
+    }
+  }
+
+}
+
+.md-subheader {
+  display: block;
+  font-size: $subheader-font-size;
+  font-weight: $subheader-font-weight;
+  line-height: $subheader-line-height;
+  margin: $subheader-margin;
+  position: relative;
+
+  ._md-subheader-inner {
+    display: block;
+    padding: $subheader-padding;
+  }
+
+  ._md-subheader-content {
+    display: block;
+    z-index: 1;
+    position: relative;
   }
 }
 
@@ -6584,233 +6584,6 @@ md-switch {
   md-switch.md-default-theme ._md-thumb {
     background-color: #fff;
   }
-}
-
-// See height set globally, depended on by buttons
-
-$md-toast-content-padding: 3 * $baseline-grid - $button-left-right-padding !default;
-$md-toast-button-left-margin: 3 * $baseline-grid - 2 * $button-left-right-padding !default;
-$md-toast-text-padding: $button-left-right-padding !default;
-
-
-.md-toast-text {
-  padding: 0 $md-toast-text-padding;
-}
-
-md-toast {
-  position: absolute;
-  z-index: $z-index-toast;
-
-  box-sizing: border-box;
-  cursor: default;
-  overflow: hidden;
-
-  // Add some padding to the outer toast container so that the wrapper's box shadow is visible
-  padding: $toast-margin;
-
-  // Setup opacity transition on whole toast
-  opacity: 1;
-  transition: $swift-ease-out;
-
-  .md-toast-content {
-    display: flex;
-    align-items: center;
-
-    max-height: 7 * $toast-height;
-    max-width: 100%;
-
-    min-height: 48px;
-    // Since we're vertically centering our text by using flexbox and having a min-height, we need to apply
-    // a fix for an IE11 flexbug, otherwise the text won't be centered vertically.
-    @include ie11-min-height-flexbug(48px);
-
-    padding: 0 $md-toast-content-padding;
-
-    box-shadow: 0 2px 5px 0 rgba(0, 0, 0, 0.26);
-    border-radius: 2px;
-    font-size: 14px;
-
-    overflow: hidden;
-
-    // Setup for transform transitions on inner content
-    transform: translate3d(0, 0, 0) rotateZ(0deg);
-    transition: $swift-ease-out;
-
-    @include rtl(justify-content, flex-start, flex-end);
-  }
-
-  &.md-capsule {
-    border-radius: 24px;
-
-    .md-toast-content {
-      border-radius: 24px;
-    }
-  }
-
-  &.ng-leave-active {
-    .md-toast-content {
-      transition: $swift-ease-in;
-    }
-  }
-
-  /* Transition differently when swiping */
-  &._md-swipeleft,
-  &._md-swiperight,
-  &._md-swipeup,
-  &._md-swipedown {
-    .md-toast-content {
-      transition: $swift-ease-out;
-    }
-  }
-
-  &.ng-enter {
-    opacity: 0;
-    .md-toast-content {
-      transform: translate3d(0, 100%, 0);
-    }
-    &._md-top {
-      .md-toast-content {
-        transform: translate3d(0, -100%, 0);
-      }
-    }
-    &.ng-enter-active {
-      opacity: 1;
-      .md-toast-content {
-        transform: translate3d(0, 0, 0);
-      }
-    }
-  }
-  /*
-   * When the toast doesn't take up the whole screen,
-   * make it rotate when the user swipes it away
-   */
-  &.ng-leave.ng-leave-active {
-    .md-toast-content {
-      opacity: 0;
-      transform: translate3d(0, 100%, 0);
-    }
-
-    &._md-swipeup {
-      .md-toast-content {
-        transform: translate3d(0, -50%, 0);
-      }
-    }
-    &._md-swipedown {
-      .md-toast-content {
-        transform: translate3d(0, 50%, 0);
-      }
-    }
-    &._md-top {
-      .md-toast-content {
-        transform: translate3d(0, -100%, 0);
-      }
-    }
-  }
-
-  .md-action {
-    line-height: 19px;
-    margin-left: 24px;
-    margin-right: 0;
-    cursor: pointer;
-    text-transform: uppercase;
-    float: right;
-  }
-
-  .md-button {
-    min-width: 0;
-    @include rtl(margin-right, 0, $md-toast-button-left-margin);
-    @include rtl(margin-left, $md-toast-button-left-margin, 0);
-  }
-}
-
-@media (max-width: $layout-breakpoint-sm - 1) {
-  md-toast {
-    left: 0;
-    right: 0;
-    width: 100%;
-    max-width: 100%;
-    min-width: 0;
-    border-radius: 0;
-    bottom: 0;
-    padding: 0;
-
-    &.ng-leave.ng-leave-active {
-      &._md-swipeup {
-        .md-toast-content {
-          transform: translate3d(0, -50%, 0);
-        }
-      }
-      &._md-swipedown {
-        .md-toast-content {
-          transform: translate3d(0, 50%, 0);
-        }
-      }
-    }
-  }
-}
-
-@media (min-width: $layout-breakpoint-sm) {
-  md-toast {
-    min-width: 288px + $toast-margin * 2;
-    &._md-bottom {
-      bottom: 0;
-    }
-    &._md-left {
-      left: 0;
-    }
-    &._md-right {
-      right: 0;
-    }
-    &._md-top {
-      top: 0;
-    }
-
-    // Support for RTL alignment
-    &._md-start {
-      @include rtl-prop(left, right, 0);
-    }
-
-    &._md-end {
-      @include rtl-prop(right, left, 0);
-    }
-
-    /*
-   * When the toast doesn't take up the whole screen,
-   * make it rotate when the user swipes it away
-   */
-    &.ng-leave.ng-leave-active {
-      &._md-swipeleft {
-        .md-toast-content {
-          transform: translate3d(-50%, 0, 0);
-        }
-      }
-      &._md-swiperight {
-        .md-toast-content {
-          transform: translate3d(50%, 0, 0);
-        }
-      }
-    }
-  }
-}
-
-@media (min-width: $layout-breakpoint-lg) {
-  md-toast {
-    .md-toast-content {
-      max-width: $baseline-grid * 71;
-    }
-  }
-}
-
-@media screen and (-ms-high-contrast: active) {
-  md-toast {
-    border: 1px solid #fff;
-  }
-}
-
-
-// While animating, set the toast parent's overflow to hidden so scrollbars do not appear
-._md-toast-animating {
-  overflow: hidden !important;
 }
 
 $tabs-paginator-width: $baseline-grid * 4 !default;
@@ -7102,6 +6875,390 @@ md-toolbar + md-tabs {
   border-top-right-radius: 0;
 }
 
+// See height set globally, depended on by buttons
+
+$md-toast-content-padding: 3 * $baseline-grid - $button-left-right-padding !default;
+$md-toast-button-left-margin: 3 * $baseline-grid - 2 * $button-left-right-padding !default;
+$md-toast-text-padding: $button-left-right-padding !default;
+
+
+.md-toast-text {
+  padding: 0 $md-toast-text-padding;
+}
+
+md-toast {
+  position: absolute;
+  z-index: $z-index-toast;
+
+  box-sizing: border-box;
+  cursor: default;
+  overflow: hidden;
+
+  // Add some padding to the outer toast container so that the wrapper's box shadow is visible
+  padding: $toast-margin;
+
+  // Setup opacity transition on whole toast
+  opacity: 1;
+  transition: $swift-ease-out;
+
+  .md-toast-content {
+    display: flex;
+    align-items: center;
+
+    max-height: 7 * $toast-height;
+    max-width: 100%;
+
+    min-height: 48px;
+    // Since we're vertically centering our text by using flexbox and having a min-height, we need to apply
+    // a fix for an IE11 flexbug, otherwise the text won't be centered vertically.
+    @include ie11-min-height-flexbug(48px);
+
+    padding: 0 $md-toast-content-padding;
+
+    box-shadow: 0 2px 5px 0 rgba(0, 0, 0, 0.26);
+    border-radius: 2px;
+    font-size: 14px;
+
+    overflow: hidden;
+
+    // Setup for transform transitions on inner content
+    transform: translate3d(0, 0, 0) rotateZ(0deg);
+    transition: $swift-ease-out;
+
+    @include rtl(justify-content, flex-start, flex-end);
+  }
+
+  &.md-capsule {
+    border-radius: 24px;
+
+    .md-toast-content {
+      border-radius: 24px;
+    }
+  }
+
+  &.ng-leave-active {
+    .md-toast-content {
+      transition: $swift-ease-in;
+    }
+  }
+
+  /* Transition differently when swiping */
+  &._md-swipeleft,
+  &._md-swiperight,
+  &._md-swipeup,
+  &._md-swipedown {
+    .md-toast-content {
+      transition: $swift-ease-out;
+    }
+  }
+
+  &.ng-enter {
+    opacity: 0;
+    .md-toast-content {
+      transform: translate3d(0, 100%, 0);
+    }
+    &._md-top {
+      .md-toast-content {
+        transform: translate3d(0, -100%, 0);
+      }
+    }
+    &.ng-enter-active {
+      opacity: 1;
+      .md-toast-content {
+        transform: translate3d(0, 0, 0);
+      }
+    }
+  }
+  /*
+   * When the toast doesn't take up the whole screen,
+   * make it rotate when the user swipes it away
+   */
+  &.ng-leave.ng-leave-active {
+    .md-toast-content {
+      opacity: 0;
+      transform: translate3d(0, 100%, 0);
+    }
+
+    &._md-swipeup {
+      .md-toast-content {
+        transform: translate3d(0, -50%, 0);
+      }
+    }
+    &._md-swipedown {
+      .md-toast-content {
+        transform: translate3d(0, 50%, 0);
+      }
+    }
+    &._md-top {
+      .md-toast-content {
+        transform: translate3d(0, -100%, 0);
+      }
+    }
+  }
+
+  .md-action {
+    line-height: 19px;
+    margin-left: 24px;
+    margin-right: 0;
+    cursor: pointer;
+    text-transform: uppercase;
+    float: right;
+  }
+
+  .md-button {
+    min-width: 0;
+    @include rtl(margin-right, 0, $md-toast-button-left-margin);
+    @include rtl(margin-left, $md-toast-button-left-margin, 0);
+  }
+}
+
+@media (max-width: $layout-breakpoint-sm - 1) {
+  md-toast {
+    left: 0;
+    right: 0;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    border-radius: 0;
+    bottom: 0;
+    padding: 0;
+
+    &.ng-leave.ng-leave-active {
+      &._md-swipeup {
+        .md-toast-content {
+          transform: translate3d(0, -50%, 0);
+        }
+      }
+      &._md-swipedown {
+        .md-toast-content {
+          transform: translate3d(0, 50%, 0);
+        }
+      }
+    }
+  }
+}
+
+@media (min-width: $layout-breakpoint-sm) {
+  md-toast {
+    min-width: 288px + $toast-margin * 2;
+    &._md-bottom {
+      bottom: 0;
+    }
+    &._md-left {
+      left: 0;
+    }
+    &._md-right {
+      right: 0;
+    }
+    &._md-top {
+      top: 0;
+    }
+
+    // Support for RTL alignment
+    &._md-start {
+      @include rtl-prop(left, right, 0);
+    }
+
+    &._md-end {
+      @include rtl-prop(right, left, 0);
+    }
+
+    /*
+   * When the toast doesn't take up the whole screen,
+   * make it rotate when the user swipes it away
+   */
+    &.ng-leave.ng-leave-active {
+      &._md-swipeleft {
+        .md-toast-content {
+          transform: translate3d(-50%, 0, 0);
+        }
+      }
+      &._md-swiperight {
+        .md-toast-content {
+          transform: translate3d(50%, 0, 0);
+        }
+      }
+    }
+  }
+}
+
+@media (min-width: $layout-breakpoint-lg) {
+  md-toast {
+    .md-toast-content {
+      max-width: $baseline-grid * 71;
+    }
+  }
+}
+
+@media screen and (-ms-high-contrast: active) {
+  md-toast {
+    border: 1px solid #fff;
+  }
+}
+
+
+// While animating, set the toast parent's overflow to hidden so scrollbars do not appear
+._md-toast-animating {
+  overflow: hidden !important;
+}
+
+$tooltip-fontsize-lg: rem(1) !default;
+$tooltip-fontsize-sm: rem(1.4) !default;
+$tooltip-height-lg: rem(2.2) !default;
+$tooltip-height-sm: rem(3.2) !default;
+$tooltip-top-margin-lg: rem(1.4) !default;
+$tooltip-top-margin-sm: rem(2.4) !default;
+$tooltip-lr-padding-lg: rem(0.8) !default;
+$tooltip-lr-padding-sm: rem(1.6) !default;
+$tooltip-max-width: rem(3.20) !default;
+
+md-tooltip {
+  position: absolute;
+  z-index: $z-index-tooltip;
+  overflow: hidden;
+  pointer-events: none;
+  border-radius: 4px;
+
+  font-weight: 500;
+  font-size: $tooltip-fontsize-sm;
+  @media (min-width: $layout-breakpoint-sm) {
+    font-size: $tooltip-fontsize-lg;
+  }
+
+  ._md-content {
+    position: relative;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transform-origin: center top;
+    transform: scale(0);
+    opacity: 0;
+    height: $tooltip-height-sm;
+    line-height: $tooltip-height-sm;
+    padding-left: $tooltip-lr-padding-sm;
+    padding-right: $tooltip-lr-padding-sm;
+    @media (min-width: $layout-breakpoint-sm) {
+      height: $tooltip-height-lg;
+      line-height: $tooltip-height-lg;
+      padding-left: $tooltip-lr-padding-lg;
+      padding-right: $tooltip-lr-padding-lg;
+    }
+    &._md-show-add {
+      transition: $swift-ease-out;
+      transition-duration: .2s;
+      transform: scale(0);
+      opacity: 0;
+    }
+    &._md-show, &._md-show-add-active {
+      transform: scale(1);
+      opacity: 1;
+      transform-origin: center top;
+    }
+    &._md-show-remove {
+      transition: $swift-ease-out;
+      transition-duration: .2s;
+      &._md-show-remove-active {
+        transform: scale(0);
+        opacity: 0;
+      }
+    }
+  }
+
+  &._md-hide {
+    transition: $swift-ease-in;
+  }
+
+  &._md-show {
+    transition: $swift-ease-out;
+    pointer-events: auto;
+  }
+}
+
+.md-whiteframe-1dp, .md-whiteframe-z1 {
+  box-shadow: $whiteframe-shadow-1dp;
+}
+.md-whiteframe-2dp {
+  box-shadow: $whiteframe-shadow-2dp;
+}
+.md-whiteframe-3dp {
+  box-shadow: $whiteframe-shadow-3dp;
+}
+.md-whiteframe-4dp, .md-whiteframe-z2{
+  box-shadow: $whiteframe-shadow-4dp;
+}
+.md-whiteframe-5dp {
+  box-shadow: $whiteframe-shadow-5dp;
+}
+.md-whiteframe-6dp {
+  box-shadow: $whiteframe-shadow-6dp;
+}
+.md-whiteframe-7dp, .md-whiteframe-z3 {
+  box-shadow: $whiteframe-shadow-7dp;
+}
+.md-whiteframe-8dp {
+  box-shadow: $whiteframe-shadow-8dp;
+}
+.md-whiteframe-9dp {
+  box-shadow: $whiteframe-shadow-9dp;
+}
+.md-whiteframe-10dp, .md-whiteframe-z4 {
+  box-shadow: $whiteframe-shadow-10dp;
+}
+.md-whiteframe-11dp {
+  box-shadow: $whiteframe-shadow-11dp;
+}
+.md-whiteframe-12dp {
+  box-shadow: $whiteframe-shadow-12dp;
+}
+.md-whiteframe-13dp, .md-whiteframe-z5{
+  box-shadow: $whiteframe-shadow-13dp;
+}
+.md-whiteframe-14dp {
+  box-shadow: $whiteframe-shadow-14dp;
+}
+.md-whiteframe-15dp {
+  box-shadow: $whiteframe-shadow-15dp;
+}
+.md-whiteframe-16dp {
+  box-shadow: $whiteframe-shadow-16dp;
+}
+.md-whiteframe-17dp {
+  box-shadow: $whiteframe-shadow-17dp;
+}
+.md-whiteframe-18dp {
+  box-shadow: $whiteframe-shadow-18dp;
+}
+.md-whiteframe-19dp {
+  box-shadow: $whiteframe-shadow-19dp;
+}
+.md-whiteframe-20dp {
+  box-shadow: $whiteframe-shadow-20dp;
+}
+.md-whiteframe-21dp {
+  box-shadow: $whiteframe-shadow-21dp;
+}
+.md-whiteframe-22dp {
+  box-shadow: $whiteframe-shadow-22dp;
+}
+.md-whiteframe-23dp {
+  box-shadow: $whiteframe-shadow-23dp;
+}
+.md-whiteframe-24dp {
+  box-shadow: $whiteframe-shadow-24dp;
+}
+
+@media screen and (-ms-high-contrast: active) {
+  md-whiteframe {
+    border: 1px solid #fff;
+  }
+}
+
+@media print {
+  md-whiteframe, [md-whiteframe] {
+    background-color: #ffffff;
+  }
+}
+
 // Standard/Desktop Heights
 $toolbar-tools-height: 64px !default;
 $toolbar-height: 64px !default;
@@ -7286,78 +7443,6 @@ md-toolbar {
 }
 
 
-$tooltip-fontsize-lg: rem(1) !default;
-$tooltip-fontsize-sm: rem(1.4) !default;
-$tooltip-height-lg: rem(2.2) !default;
-$tooltip-height-sm: rem(3.2) !default;
-$tooltip-top-margin-lg: rem(1.4) !default;
-$tooltip-top-margin-sm: rem(2.4) !default;
-$tooltip-lr-padding-lg: rem(0.8) !default;
-$tooltip-lr-padding-sm: rem(1.6) !default;
-$tooltip-max-width: rem(3.20) !default;
-
-md-tooltip {
-  position: absolute;
-  z-index: $z-index-tooltip;
-  overflow: hidden;
-  pointer-events: none;
-  border-radius: 4px;
-
-  font-weight: 500;
-  font-size: $tooltip-fontsize-sm;
-  @media (min-width: $layout-breakpoint-sm) {
-    font-size: $tooltip-fontsize-lg;
-  }
-
-  ._md-content {
-    position: relative;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    transform-origin: center top;
-    transform: scale(0);
-    opacity: 0;
-    height: $tooltip-height-sm;
-    line-height: $tooltip-height-sm;
-    padding-left: $tooltip-lr-padding-sm;
-    padding-right: $tooltip-lr-padding-sm;
-    @media (min-width: $layout-breakpoint-sm) {
-      height: $tooltip-height-lg;
-      line-height: $tooltip-height-lg;
-      padding-left: $tooltip-lr-padding-lg;
-      padding-right: $tooltip-lr-padding-lg;
-    }
-    &._md-show-add {
-      transition: $swift-ease-out;
-      transition-duration: .2s;
-      transform: scale(0);
-      opacity: 0;
-    }
-    &._md-show, &._md-show-add-active {
-      transform: scale(1);
-      opacity: 1;
-      transform-origin: center top;
-    }
-    &._md-show-remove {
-      transition: $swift-ease-out;
-      transition-duration: .2s;
-      &._md-show-remove-active {
-        transform: scale(0);
-        opacity: 0;
-      }
-    }
-  }
-
-  &._md-hide {
-    transition: $swift-ease-in;
-  }
-
-  &._md-show {
-    transition: $swift-ease-out;
-    pointer-events: auto;
-  }
-}
-
 $virtual-repeat-scrollbar-width: 16px !default;
 
 .md-virtual-repeat-container {
@@ -7412,91 +7497,6 @@ $virtual-repeat-scrollbar-width: 16px !default;
     bottom: $virtual-repeat-scrollbar-width;
     @include rtl-prop(right, left, auto);
     white-space: nowrap;
-  }
-}
-
-.md-whiteframe-1dp, .md-whiteframe-z1 {
-  box-shadow: $whiteframe-shadow-1dp;
-}
-.md-whiteframe-2dp {
-  box-shadow: $whiteframe-shadow-2dp;
-}
-.md-whiteframe-3dp {
-  box-shadow: $whiteframe-shadow-3dp;
-}
-.md-whiteframe-4dp, .md-whiteframe-z2{
-  box-shadow: $whiteframe-shadow-4dp;
-}
-.md-whiteframe-5dp {
-  box-shadow: $whiteframe-shadow-5dp;
-}
-.md-whiteframe-6dp {
-  box-shadow: $whiteframe-shadow-6dp;
-}
-.md-whiteframe-7dp, .md-whiteframe-z3 {
-  box-shadow: $whiteframe-shadow-7dp;
-}
-.md-whiteframe-8dp {
-  box-shadow: $whiteframe-shadow-8dp;
-}
-.md-whiteframe-9dp {
-  box-shadow: $whiteframe-shadow-9dp;
-}
-.md-whiteframe-10dp, .md-whiteframe-z4 {
-  box-shadow: $whiteframe-shadow-10dp;
-}
-.md-whiteframe-11dp {
-  box-shadow: $whiteframe-shadow-11dp;
-}
-.md-whiteframe-12dp {
-  box-shadow: $whiteframe-shadow-12dp;
-}
-.md-whiteframe-13dp, .md-whiteframe-z5{
-  box-shadow: $whiteframe-shadow-13dp;
-}
-.md-whiteframe-14dp {
-  box-shadow: $whiteframe-shadow-14dp;
-}
-.md-whiteframe-15dp {
-  box-shadow: $whiteframe-shadow-15dp;
-}
-.md-whiteframe-16dp {
-  box-shadow: $whiteframe-shadow-16dp;
-}
-.md-whiteframe-17dp {
-  box-shadow: $whiteframe-shadow-17dp;
-}
-.md-whiteframe-18dp {
-  box-shadow: $whiteframe-shadow-18dp;
-}
-.md-whiteframe-19dp {
-  box-shadow: $whiteframe-shadow-19dp;
-}
-.md-whiteframe-20dp {
-  box-shadow: $whiteframe-shadow-20dp;
-}
-.md-whiteframe-21dp {
-  box-shadow: $whiteframe-shadow-21dp;
-}
-.md-whiteframe-22dp {
-  box-shadow: $whiteframe-shadow-22dp;
-}
-.md-whiteframe-23dp {
-  box-shadow: $whiteframe-shadow-23dp;
-}
-.md-whiteframe-24dp {
-  box-shadow: $whiteframe-shadow-24dp;
-}
-
-@media screen and (-ms-high-contrast: active) {
-  md-whiteframe {
-    border: 1px solid #fff;
-  }
-}
-
-@media print {
-  md-whiteframe, [md-whiteframe] {
-    background-color: #ffffff;
   }
 }
 
