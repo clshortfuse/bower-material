@@ -1916,7 +1916,7 @@ md-card {
   }
 
   > img,
-  > :not(md-card-content) img {
+  > md-card-header img {
     box-sizing: border-box;
     display: flex;
     flex: 0 0 auto;
@@ -2559,9 +2559,6 @@ $md-datepicker-open-animation-duration: 0.2s !default;
 $md-datepicker-triangle-button-width: 36px !default;
 $md-datepicker-input-mask-height: 40px !default;
 
-// The datepickers triangle icon uses the default button margin.
-// We need to use the margin to align the label inside of an input container properly.
-$icon-button-margin: rem(0.600) !default;
 
 md-datepicker {
   // Don't let linebreaks happen between the open icon-button and the input.
@@ -2591,7 +2588,7 @@ md-datepicker {
 }
 
 // The input into which the user can type the date.
-.md-datepicker-input, label:not(.md-no-float):not(._md-container-ignore) {
+.md-datepicker-input {
   @include md-flat-input();
   min-width: 120px;
   max-width: $md-calendar-width - $md-datepicker-button-gap;
@@ -2600,10 +2597,11 @@ md-datepicker {
 // If the datepicker is inside of a md-input-container
 ._md-datepicker-floating-label {
   > label:not(.md-no-float):not(._md-container-ignore) {
-    $offset: $md-datepicker-triangle-button-width * 2 + $md-datepicker-button-gap + $icon-button-margin + $baseline-grid;
-    @include rtl(right, $icon-button-margin, auto);
-    @include rtl(left, auto, $icon-button-margin);
-    width: calc(100% - #{$offset});
+    $width-offset: $md-datepicker-triangle-button-width * 2 + $md-datepicker-button-gap;
+    $offset: $md-datepicker-triangle-button-width / 2;
+    @include rtl(right, $offset, auto);
+    @include rtl(left, auto, $offset);
+    width: calc(100% - #{$width-offset});
   }
 
   > md-datepicker {
@@ -2654,10 +2652,9 @@ md-datepicker {
   // overflowing it's parent, however IE and Edge seem to disregard it.
   // The `left: -100%` pulls the element back in order to ensure that
   // it doesn't cause an overflow.
-  left: -100%;
   position: absolute;
   top: 0;
-  left: 0;
+  left: -100%;
   z-index: $z-index-calendar-pane;
   border-width: 1px;
   border-style: solid;
@@ -4993,8 +4990,22 @@ $select-option-height: 48px !default;
 $select-option-padding: 16px !default;
 $select-container-padding: 16px !default;
 $select-container-transition-duration: 350ms !default;
+$select-value-padding-top: 6px;
+$select-value-padding-bottom: 4px;
 
 $select-max-visible-options: 5 !default;
+
+// from input.scss
+$input-container-margin-top: 18px !default;
+$input-container-padding-top: 2px !default;
+$input-padding-top: 2px !default;
+$input-padding-bottom: 1px !default;
+
+$input-alignment: ($input-padding-top + $input-padding-bottom)
+                   - ($select-value-padding-top + $select-value-padding-bottom);
+$md-inline-alignment: ($input-container-margin-top + $input-container-padding-top)
+                      + ($input-padding-top + $input-padding-bottom)
+                      - ($select-value-padding-top + $select-value-padding-bottom);
 
 // Fixes the animations with the floating label when select is inside an input container
 md-input-container {
@@ -5060,7 +5071,7 @@ md-input-container {
 }
 
 md-input-container > md-select {
-  margin: 0;
+  margin-top: $input-alignment;
   order: 2;
 }
 
@@ -5090,7 +5101,6 @@ md-input-container.md-input-invalid {
 
 md-select {
   display: flex;
-  margin: 2.5*$baseline-grid 0 3*$baseline-grid + 2 0;
 
   &[required], &.ng-required {
     &.ng-invalid {
@@ -5108,7 +5118,12 @@ md-select {
     // to create a dotted line under the input.
     background-size: 4px 1px;
     background-repeat: repeat-x;
-    margin-bottom: -1px; // Shift downward so dotted line is positioned the same as other bottom borders
+    // Add to padding-bottom to keep dotted line aligned with other bottom borders
+    // Sub from padding-top to keep height consistent
+    // Translate text 1px up to keep in alignment
+    padding-bottom: $select-value-padding-bottom + 1;
+    padding-top: $select-value-padding-top - 1;
+    transform: translate3d(0, 1px, 0);
   }
 
   &:focus {
@@ -5123,43 +5138,33 @@ md-select {
     }
     &.ng-invalid.ng-touched {
       ._md-select-value {
-        border-bottom-style: solid;
-        padding-bottom: 1px;
+        border-bottom: 2px solid;
       }
     }
     &:focus {
       ._md-select-value {
         border-bottom-width: 2px;
         border-bottom-style: solid;
-        padding-bottom: 0;
-      }
-      &.ng-invalid.ng-touched {
-        ._md-select-value {
-          padding-bottom: 0;
-        }
+        padding-bottom: $select-value-padding-bottom - 1;
       }
     }
-  }
-}
-
-// Fix value by 1px to align with standard text inputs (and spec)
-md-input-container.md-input-has-value ._md-select-value {
-  > span:not(._md-select-icon) {
-    transform: translate3d(0, 1px, 0);
   }
 }
 
 ._md-select-value {
   display: flex;
   align-items: center;
-  padding: 2px 2px 1px;
+  padding-top: $select-value-padding-top;
+  padding-bottom: $select-value-padding-bottom;
   border-bottom-width: 1px;
   border-bottom-style: solid;
   background-color: rgba(0,0,0,0);
   position: relative;
   box-sizing: content-box;
-  min-width: 8 * $baseline-grid;
+  min-width: 11 * $baseline-grid;
   min-height: 26px;
+  margin-bottom: auto;
+  -ms-flex-item-align: start; // workaround for margin-bottom: auto
   flex-grow: 1;
 
 
@@ -5180,7 +5185,6 @@ md-input-container.md-input-has-value ._md-select-value {
     align-items: flex-end;
     text-align: end;
     width: 3 * $baseline-grid;
-    margin: 0 .5 * $baseline-grid;
     transform: translate3d(0, -2px, 0);
     font-size: 1.2rem;
   }
@@ -5190,9 +5194,11 @@ md-input-container.md-input-has-value ._md-select-value {
     content: '\25BC';
     position: relative;
     top: 2px;
+    @include rtl(right, -4px, auto);
+    @include rtl(left, auto, -4px);
     speak: none;
     font-size: 16px;
-    transform: scaleY(0.6) scaleX(1);
+    transform: scaleY(0.5);
   }
 
   &._md-select-placeholder {
@@ -5200,7 +5206,6 @@ md-input-container.md-input-has-value ._md-select-value {
     order: 1;
     pointer-events: none;
     -webkit-font-smoothing: antialiased;
-    padding-left: 2px;
     z-index: 1;
   }
 }
@@ -5304,122 +5309,19 @@ md-select-menu[multiple] {
   }
 }
 
-$sidenav-mobile-width: 320px !default;
-$sidenav-desktop-width: 400px !default;
-$sidenav-min-space: 56px !default;
-
-md-sidenav {
-  box-sizing: border-box;
-  position: absolute;
-  flex-direction: column;
-  z-index: $z-index-sidenav;
-
-  width: $sidenav-mobile-width;
-  max-width: $sidenav-mobile-width;
-  bottom: 0;
-  overflow: auto;
-  -webkit-overflow-scrolling: touch;
-
-  ul {
-    list-style: none;
+.layout-row,
+.layout-xs-row, .layout-gt-xs-row,
+.layout-sm-row, .layout-gt-sm-row,
+.layout-md-row, .layout-gt-md-row,
+.layout-lg-row, .layout-gt-lg-row,
+.layout-xl-row {
+  & > md-select:not(:last-child), {
+    @include rtl(margin-left, 0, $select-container-padding);
+    @include rtl(margin-right, $select-container-padding, 0);
   }
 
-  &._md-closed {
-    display: none;
-  }
-  &._md-closed-add,
-  &._md-closed-remove {
-    display: flex;
-    transition: 0.2s ease-in all;
-  }
-
-  &._md-closed-add._md-closed-add-active,
-  &._md-closed-remove._md-closed-remove-active {
-    transition: $swift-ease-out;
-  }
-
-  &._md-locked-open-add,
-  &._md-locked-open-remove {
-    position: static;
-    display: flex;
-    transform: translate3d(0, 0, 0);
-  }
-
-  &._md-locked-open,
-  &._md-locked-open._md-closed,
-  &._md-locked-open._md-closed.md-sidenav-left,
-  &._md-locked-open._md-closed.md-sidenav-right,
-  &._md-locked-open-remove._md-closed {
-    position: static;
-    display: flex;
-    transform: translate3d(0, 0, 0);
-  }
-  &._md-locked-open-remove-active {
-    transition: width $swift-ease-in-duration $swift-ease-in-timing-function,
-                min-width $swift-ease-in-duration $swift-ease-in-timing-function;
-    width: 0 !important;
-    min-width: 0 !important;
-  }
-
-  &._md-closed._md-locked-open-add {
-    width: 0 !important;
-    min-width: 0 !important;
-    transform: translate3d(0%, 0, 0);
-  }
-
-  &._md-closed._md-locked-open-add-active {
-    transition: width $swift-ease-in-duration $swift-ease-in-timing-function,
-                min-width $swift-ease-in-duration $swift-ease-in-timing-function;
-    width: $sidenav-mobile-width;
-    min-width: $sidenav-mobile-width;
-    transform: translate3d(0%, 0, 0);
-  }
-
-  @extend .md-sidenav-left;
-}
-._md-sidenav-backdrop._md-locked-open {
-  display: none;
-}
-
-.md-sidenav-left {
-  left: 0;
-  top: 0;
-  transform: translate3d(0%, 0, 0);
-  &._md-closed {
-    transform: translate3d(-100%, 0, 0);
-  }
-}
-
-.md-sidenav-right {
-  left: 100%;
-  top: 0;
-  transform: translate(-100%, 0);
-  &._md-closed {
-    transform: translate(0%, 0);
-  }
-}
-
-@media (min-width: $layout-breakpoint-xs) {
-  md-sidenav {
-    max-width: $sidenav-desktop-width;
-  }
-}
-
-@media (max-width: $sidenav-desktop-width + $sidenav-min-space) {
-  md-sidenav {
-    width: calc(100% - #{$sidenav-min-space});
-    min-width: calc(100% - #{$sidenav-min-space});
-    max-width: calc(100% - #{$sidenav-min-space});
-  }
-}
-
-// IE Only
-@media screen and (-ms-high-contrast: active) {
-  .md-sidenav-left {
-    border-right: 1px solid #fff;
-  }
-  .md-sidenav-right {
-    border-left: 1px solid #fff;
+  .md-inline-form & > md-select {
+    margin-top: $md-inline-alignment;
   }
 }
 
@@ -5934,6 +5836,125 @@ md-slider-container {
     &:not(.md-sticky-no-effect) ._md-subheader-inner {
       animation: subheaderStickyHoverIn 0.3s ease-out both;
     }
+  }
+}
+
+$sidenav-mobile-width: 320px !default;
+$sidenav-desktop-width: 400px !default;
+$sidenav-min-space: 56px !default;
+
+md-sidenav {
+  box-sizing: border-box;
+  position: absolute;
+  flex-direction: column;
+  z-index: $z-index-sidenav;
+
+  width: $sidenav-mobile-width;
+  max-width: $sidenav-mobile-width;
+  bottom: 0;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+
+  ul {
+    list-style: none;
+  }
+
+  &._md-closed {
+    display: none;
+  }
+  &._md-closed-add,
+  &._md-closed-remove {
+    display: flex;
+    transition: 0.2s ease-in all;
+  }
+
+  &._md-closed-add._md-closed-add-active,
+  &._md-closed-remove._md-closed-remove-active {
+    transition: $swift-ease-out;
+  }
+
+  &._md-locked-open-add,
+  &._md-locked-open-remove {
+    position: static;
+    display: flex;
+    transform: translate3d(0, 0, 0);
+  }
+
+  &._md-locked-open,
+  &._md-locked-open._md-closed,
+  &._md-locked-open._md-closed.md-sidenav-left,
+  &._md-locked-open._md-closed.md-sidenav-right,
+  &._md-locked-open-remove._md-closed {
+    position: static;
+    display: flex;
+    transform: translate3d(0, 0, 0);
+  }
+  &._md-locked-open-remove-active {
+    transition: width $swift-ease-in-duration $swift-ease-in-timing-function,
+                min-width $swift-ease-in-duration $swift-ease-in-timing-function;
+    width: 0 !important;
+    min-width: 0 !important;
+  }
+
+  &._md-closed._md-locked-open-add {
+    width: 0 !important;
+    min-width: 0 !important;
+    transform: translate3d(0%, 0, 0);
+  }
+
+  &._md-closed._md-locked-open-add-active {
+    transition: width $swift-ease-in-duration $swift-ease-in-timing-function,
+                min-width $swift-ease-in-duration $swift-ease-in-timing-function;
+    width: $sidenav-mobile-width;
+    min-width: $sidenav-mobile-width;
+    transform: translate3d(0%, 0, 0);
+  }
+
+  @extend .md-sidenav-left;
+}
+._md-sidenav-backdrop._md-locked-open {
+  display: none;
+}
+
+.md-sidenav-left {
+  left: 0;
+  top: 0;
+  transform: translate3d(0%, 0, 0);
+  &._md-closed {
+    transform: translate3d(-100%, 0, 0);
+  }
+}
+
+.md-sidenav-right {
+  left: 100%;
+  top: 0;
+  transform: translate(-100%, 0);
+  &._md-closed {
+    transform: translate(0%, 0);
+  }
+}
+
+@media (min-width: $layout-breakpoint-xs) {
+  md-sidenav {
+    max-width: $sidenav-desktop-width;
+  }
+}
+
+@media (max-width: $sidenav-desktop-width + $sidenav-min-space) {
+  md-sidenav {
+    width: calc(100% - #{$sidenav-min-space});
+    min-width: calc(100% - #{$sidenav-min-space});
+    max-width: calc(100% - #{$sidenav-min-space});
+  }
+}
+
+// IE Only
+@media screen and (-ms-high-contrast: active) {
+  .md-sidenav-left {
+    border-right: 1px solid #fff;
+  }
+  .md-sidenav-right {
+    border-left: 1px solid #fff;
   }
 }
 

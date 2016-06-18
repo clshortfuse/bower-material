@@ -2,7 +2,7 @@
  * Angular Material Design
  * https://github.com/angular/material
  * @license MIT
- * v1.1.0-rc.5-master-d6996b7
+ * v1.1.0-rc.5
  */
 (function( window, angular, undefined ){
 "use strict";
@@ -1510,7 +1510,7 @@ function SelectProvider($$interimElementProvider) {
           transformOrigin = '50% 100%';
         }
       } else {
-        left = (targetRect.left + centeredRect.left - centeredRect.paddingLeft) + 2;
+        left = (targetRect.left + centeredRect.left - centeredRect.paddingLeft);
         top = Math.floor(targetRect.top + targetRect.height / 2 - centeredRect.height / 2 -
             centeredRect.top + contentNode.scrollTop) + 2;
 
