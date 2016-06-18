@@ -2,7 +2,7 @@
  * Angular Material Design
  * https://github.com/angular/material
  * @license MIT
- * v1.1.0-rc.5-master-d6996b7
+ * v1.1.0-rc.5
  */
 (function( window, angular, undefined ){
 "use strict";
@@ -151,6 +151,8 @@ function labelDirective() {
       if (!containerCtrl || attr.mdNoFloat || element.hasClass('_md-container-ignore')) return;
 
       containerCtrl.label = element;
+      containerCtrl.element.addClass('md-input-has-label');
+      
       scope.$on('$destroy', function() {
         containerCtrl.label = null;
       });
@@ -190,6 +192,8 @@ function labelDirective() {
  * @param md-detect-hidden {boolean=} When present, textareas will be sized properly when they are
  *   revealed after being hidden. This is off by default for performance reasons because it
  *   guarantees a reflow every digest cycle.
+ * @param md-spacing {string=} Override spacing between icon and text. Default is 36px. Use `wide` for
+ *   48px. Use `extra-wide` for 56px.
  *
  * @usage
  * <hljs lang="html">
@@ -458,8 +462,9 @@ function inputTextareaDirective($mdUtil, $window, $mdAria, $timeout, $mdGesture)
 
         if (!lineHeight) {
           // offsetHeight includes padding which can throw off our value
+          var originalPadding = element[0].style.padding || '';
           lineHeight = element.css('padding', 0).prop('offsetHeight');
-          element.css('padding', null);
+          element[0].style.padding = originalPadding;
         }
 
         if (minRows && lineHeight) {
@@ -716,7 +721,7 @@ function placeholderDirective($compile) {
       // it later. This is necessary, because if we compile the element beforehand,
       // it won't be able to find the `mdInputContainer` controller.
       inputContainer.element
-        .addClass('md-icon-float')
+        .addClass('md-icon-float md-input-has-label')
         .prepend(newLabel);
 
       $compile(newLabel)(scope);
@@ -822,16 +827,18 @@ function ngMessagesDirective() {
     // If we are not a child of an input container, don't do anything
     if (!inputContainer) return;
 
-    // Add our animation class
-    element.toggleClass('md-input-messages-animation', true);
+    // Ensure inputContainer has class `md-input-has-messages`
+    inputContainer.element.addClass('md-input-has-messages');
 
+    // Add our animation class
     // Add our md-auto-hide class to automatically hide/show messages when container is invalid
-    element.toggleClass('md-auto-hide', true);
+    element.addClass('md-input-messages-animation md-auto-hide');
 
     // If we see some known visibility directives, remove the md-auto-hide class
     if (attrs.mdAutoHide == 'false' || hasVisibiltyDirective(attrs)) {
       element.toggleClass('md-auto-hide', false);
     }
+
   }
 
   function hasVisibiltyDirective(attrs) {

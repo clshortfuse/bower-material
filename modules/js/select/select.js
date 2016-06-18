@@ -2,7 +2,7 @@
  * Angular Material Design
  * https://github.com/angular/material
  * @license MIT
- * v1.1.0-rc.5-master-d6996b7
+ * v1.1.0-rc.5
  */
 (function( window, angular, undefined ){
 "use strict";
@@ -45,7 +45,7 @@ angular.module('material.components.select', [
  *
  * When the select is required and uses a floating label, then the label will automatically contain
  * an asterisk (`*`). This behavior can be disabled by using the `md-no-asterisk` attribute.
- * 
+ *
  * By default, the select will display with an underline to match other form elements. This can be
  * disabled by applying the `md-no-underline` CSS class.
  *
@@ -62,6 +62,7 @@ angular.module('material.components.select', [
  * explicit label is present.
  * @param {string=} md-container-class Class list to get applied to the `._md-select-menu-container`
  * element (for custom styling).
+ * @param {boolean=} md-no-border When present bottom border will not be visible
  *
  * @usage
  * With a placeholder (label and aria-label are added dynamically)
@@ -327,12 +328,12 @@ function SelectDirective($mdSelect, $mdUtil, $mdTheming, $mdAria, $compile, $par
         if (isPlaceholder) {
           valueEl.addClass('_md-select-placeholder');
           if (containerCtrl && containerCtrl.label) {
-            containerCtrl.label.addClass('_md-placeholder');
+            containerCtrl.label.addClass('_md-placeholder _md-select-label');
           }
         } else {
           valueEl.removeClass('_md-select-placeholder');
           if (containerCtrl && containerCtrl.label) {
-            containerCtrl.label.removeClass('_md-placeholder');
+            containerCtrl.label.removeClass('_md-placeholder _md-select-label');
           }
         }
       };
@@ -1510,9 +1511,9 @@ function SelectProvider($$interimElementProvider) {
           transformOrigin = '50% 100%';
         }
       } else {
-        left = (targetRect.left + centeredRect.left - centeredRect.paddingLeft) + 2;
+        left = (targetRect.left + centeredRect.left - centeredRect.paddingLeft);
         top = Math.floor(targetRect.top + targetRect.height / 2 - centeredRect.height / 2 -
-            centeredRect.top + contentNode.scrollTop) + 2;
+            centeredRect.top + contentNode.scrollTop) + 1;
 
         transformOrigin = (centeredRect.left + targetRect.width / 2) + 'px ' +
           (centeredRect.top + centeredRect.height / 2 - contentNode.scrollTop) + 'px 0px';

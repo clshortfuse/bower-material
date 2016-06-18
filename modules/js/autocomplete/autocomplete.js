@@ -2,7 +2,7 @@
  * Angular Material Design
  * https://github.com/angular/material
  * @license MIT
- * v1.1.0-rc.5-master-d6996b7
+ * v1.1.0-rc.5
  */
 (function( window, angular, undefined ){
 "use strict";
@@ -488,12 +488,22 @@ function MdAutocompleteCtrl ($scope, $element, $mdUtil, $mdConstant, $mdTheming,
         select(ctrl.index);
         break;
       case $mdConstant.KEY_CODE.ESCAPE:
+        if (!shouldProcessEscape()) return;
         event.stopPropagation();
         event.preventDefault();
-        if ($scope.searchText) clearValue();
 
-        // Force the component to blur if they hit escape
-        doBlur(true);
+        clearSelectedItem();
+        if ($scope.searchText && hasEscapeOption('clear')) {
+          clearSearchText();
+        }
+
+        if (hasEscapeOption('blur')) {
+          // Force the component to blur if they hit escape
+          doBlur(true);
+        } else {
+          // Manually hide (needed for mdNotFound support)
+          ctrl.hidden = true;
+        }
 
         break;
       default:
@@ -571,6 +581,22 @@ function MdAutocompleteCtrl ($scope, $element, $mdUtil, $mdConstant, $mdTheming,
     else if (hasSelection()) return true;           // Hide if there is already a selection
     else if (!hasFocus) return true;                // Hide if the input does not have focus
     else return !shouldShow();                      // Defer to standard show logic
+  }
+
+  /**
+   * Determines if the escape keydown should be processed
+   * @returns {boolean}
+   */
+  function shouldProcessEscape() {
+    return hasEscapeOption('blur') || !ctrl.hidden || ctrl.loading || hasEscapeOption('clear') && $scope.searchText;
+  }
+
+  /**
+   * Determines if an escape option is set
+   * @returns {boolean}
+   */
+  function hasEscapeOption(option) {
+    return !$scope.escapeOptions || $scope.escapeOptions.toLowerCase().indexOf(option) !== -1;
   }
 
   /**
@@ -661,15 +687,29 @@ function MdAutocompleteCtrl ($scope, $element, $mdUtil, $mdConstant, $mdTheming,
   /**
    * Clears the searchText value and selected item.
    */
-  function clearValue ($event) {
+  function clearValue () {
+    clearSelectedItem();
+    clearSearchText();
+  }
+
+  /**
+   * Clears the selected item
+   */
+  function clearSelectedItem () {
+    // Reset our variables
+    ctrl.index = 0;
+    ctrl.matches = [];
+  }
+
+  /**
+   * Clears the searchText value
+   */
+  function clearSearchText () {
     // Set the loading to true so we don't see flashes of content.
     // The flashing will only occur when an async request is running.
     // So the loading process will stop when the results had been retrieved.
     setLoading(true);
 
-    // Reset our variables
-    ctrl.index = 0;
-    ctrl.matches = [];
     $scope.searchText = '';
 
     // Per http://www.w3schools.com/jsref/event_oninput.asp
@@ -902,6 +942,8 @@ angular
  *     the item if the search text is an exact match
  * @param {boolean=} md-match-case-insensitive When set and using `md-select-on-match`, autocomplete
  *     will select on case-insensitive match
+ * @param {string=} md-escape-options Override escape key logic. Default is `blur clear`.
+ *     Options: `blur|clear`, `none`
  *
  * @usage
  * ### Basic Example
@@ -983,7 +1025,8 @@ function MdAutocomplete ($$mdSvgRegistry) {
       floatingLabel:    '@?mdFloatingLabel',
       autoselect:       '=?mdAutoselect',
       menuClass:        '@?mdMenuClass',
-      inputId:          '@?mdInputId'
+      inputId:          '@?mdInputId',
+      escapeOptions:    '@?mdEscapeOptions'
     },
     link: function(scope, element, attrs, controller) {
       // Retrieve the state of using a md-not-found template by using our attribute, which will
@@ -1010,10 +1053,6 @@ function MdAutocomplete ($$mdSvgRegistry) {
             layout="row"\
             ng-class="{ \'md-whiteframe-z1\': !floatingLabel, \'md-menu-showing\': !$mdAutocompleteCtrl.hidden }">\
           ' + getInputElement() + '\
-          <md-progress-linear\
-              class="' + (attr.mdFloatingLabel ? 'md-inline' : '') + '"\
-              ng-if="$mdAutocompleteCtrl.loadingIsVisible()"\
-              md-mode="indeterminate"></md-progress-linear>\
           <md-virtual-repeat-container\
               md-auto-shrink\
               md-auto-shrink-min="1"\
@@ -1063,7 +1102,9 @@ function MdAutocomplete ($$mdSvgRegistry) {
       function getInputElement () {
         if (attr.mdFloatingLabel) {
           return '\
-            <md-input-container flex ng-if="floatingLabel">\
+            <md-input-container\
+                class="' + (element.hasClass('md-dense') ? 'md-dense' : '') + '"\
+                flex ng-if="floatingLabel">\
               <label>{{floatingLabel}}</label>\
               <input type="search"\
                   ' + (tabindex != null ? 'tabindex="' + tabindex + '"' : '') + '\
@@ -1088,6 +1129,10 @@ function MdAutocomplete ($$mdSvgRegistry) {
                   aria-haspopup="true"\
                   aria-activedescendant=""\
                   aria-expanded="{{!$mdAutocompleteCtrl.hidden}}"/>\
+              <md-progress-linear\
+                  class="' + (attr.mdFloatingLabel ? 'md-inline' : '') + '"\
+                  ng-if="$mdAutocompleteCtrl.loadingIsVisible()"\
+                  md-mode="indeterminate"></md-progress-linear>\
               <div md-autocomplete-parent-scope md-autocomplete-replace>' + leftover + '</div>\
             </md-input-container>';
         } else {
@@ -1114,6 +1159,10 @@ function MdAutocomplete ($$mdSvgRegistry) {
                 aria-haspopup="true"\
                 aria-activedescendant=""\
                 aria-expanded="{{!$mdAutocompleteCtrl.hidden}}"/>\
+            <md-progress-linear\
+                class="' + (attr.mdFloatingLabel ? 'md-inline' : '') + '"\
+                ng-if="$mdAutocompleteCtrl.loadingIsVisible()"\
+                md-mode="indeterminate"></md-progress-linear>\
             <button\
                 type="button"\
                 tabindex="-1"\
