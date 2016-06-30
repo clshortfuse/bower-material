@@ -536,7 +536,7 @@ function MdAutocompleteCtrl ($scope, $element, $mdUtil, $mdConstant, $mdTheming,
           if ($scope.replaceTextOnSelect && $scope.displayText != $scope.searchText && !willBlur) {
             $scope.displayText = $scope.searchText;
           } else if (willClear) {
-            clearText();
+            clearSearchText();
           }
         }
 
@@ -741,7 +741,7 @@ function MdAutocompleteCtrl ($scope, $element, $mdUtil, $mdConstant, $mdTheming,
    */
   function clearValue () {
     clearSelectedItem();
-    clearText();
+    clearSearchText();
   }
 
   /**
@@ -758,7 +758,7 @@ function MdAutocompleteCtrl ($scope, $element, $mdUtil, $mdConstant, $mdTheming,
    * Clears the displayText value
    * Clears the input value
    */
-  function clearText () {
+  function clearSearchText () {
     // Set the loading to true so we don't see flashes of content.
     // The flashing will only occur when an async request is running.
     // So the loading process will stop when the results had been retrieved.
