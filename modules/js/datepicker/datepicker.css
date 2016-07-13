@@ -4,11 +4,10 @@
  * @license MIT
  * v1.1.0-rc.5
  */
-/*  Only used with Theme processes */
-html.md-THEME_NAME-theme, body.md-THEME_NAME-theme {
-  color: '{{foreground-1}}';
-  background-color: '{{background-color}}'; }
-
+/**
+ * Mixin to create a primary checkbox.
+ * Used by the checkbox and select component.
+ */
 /** Styles for mdCalendar. */
 md-calendar {
   font-size: 13px;
@@ -120,11 +119,10 @@ md-calendar {
     vertical-align: middle;
     box-sizing: content-box; }
 
-/*  Only used with Theme processes */
-html.md-THEME_NAME-theme, body.md-THEME_NAME-theme {
-  color: '{{foreground-1}}';
-  background-color: '{{background-color}}'; }
-
+/**
+ * Mixin to create a primary checkbox.
+ * Used by the checkbox and select component.
+ */
 /** Styles for mdDatepicker. */
 md-datepicker {
   white-space: nowrap;
@@ -227,25 +225,25 @@ md-datepicker {
   [md-spacing="extra-wide"] .md-datepicker-input, .md-datepicker-input[md-spacing="extra-wide"] {
     max-width: 254px; }
 
-._md-datepicker-floating-label > label:not(.md-no-float):not(._md-container-ignore) {
+._md-datepicker-floating-label > label:not(.md-no-float):not(.md-container-ignore) {
   left: 36px; }
-  [dir=rtl] ._md-datepicker-floating-label > label:not(.md-no-float):not(._md-container-ignore) {
+  [dir=rtl] ._md-datepicker-floating-label > label:not(.md-no-float):not(.md-container-ignore) {
     left: 0;
     left: auto;
     left: initial;
     right: 36px; }
 
-[md-spacing="wide"] ._md-datepicker-floating-label > label:not(.md-no-float):not(._md-container-ignore), ._md-datepicker-floating-label[md-spacing="wide"] > label:not(.md-no-float):not(._md-container-ignore) {
+[md-spacing="wide"] ._md-datepicker-floating-label > label:not(.md-no-float):not(.md-container-ignore), ._md-datepicker-floating-label[md-spacing="wide"] > label:not(.md-no-float):not(.md-container-ignore) {
   left: 48px; }
-  [dir=rtl] [md-spacing="wide"] ._md-datepicker-floating-label > label:not(.md-no-float):not(._md-container-ignore), [dir=rtl] ._md-datepicker-floating-label[md-spacing="wide"] > label:not(.md-no-float):not(._md-container-ignore) {
+  [dir=rtl] [md-spacing="wide"] ._md-datepicker-floating-label > label:not(.md-no-float):not(.md-container-ignore), [dir=rtl] ._md-datepicker-floating-label[md-spacing="wide"] > label:not(.md-no-float):not(.md-container-ignore) {
     left: 0;
     left: auto;
     left: initial;
     right: 48px; }
 
-[md-spacing="extra-wide"] ._md-datepicker-floating-label > label:not(.md-no-float):not(._md-container-ignore), ._md-datepicker-floating-label[md-spacing="extra-wide"] > label:not(.md-no-float):not(._md-container-ignore) {
+[md-spacing="extra-wide"] ._md-datepicker-floating-label > label:not(.md-no-float):not(.md-container-ignore), ._md-datepicker-floating-label[md-spacing="extra-wide"] > label:not(.md-no-float):not(.md-container-ignore) {
   left: 56px; }
-  [dir=rtl] [md-spacing="extra-wide"] ._md-datepicker-floating-label > label:not(.md-no-float):not(._md-container-ignore), [dir=rtl] ._md-datepicker-floating-label[md-spacing="extra-wide"] > label:not(.md-no-float):not(._md-container-ignore) {
+  [dir=rtl] [md-spacing="extra-wide"] ._md-datepicker-floating-label > label:not(.md-no-float):not(.md-container-ignore), [dir=rtl] ._md-datepicker-floating-label[md-spacing="extra-wide"] > label:not(.md-no-float):not(.md-container-ignore) {
     left: 0;
     left: auto;
     left: initial;

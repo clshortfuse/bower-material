@@ -254,7 +254,9 @@ angular
  * @ngdoc method
  * @name MdPanelRef#close
  * @description
- * Hides and detaches the panel.
+ * Hides and detaches the panel. Note that this will **not** destroy the panel. If you
+ * don't intend on using the panel again, call the {@link MdPanelRef#destroy destroy} method
+ * afterwards.
  *
  * @returns {!angular.$q.Promise} A promise that is resolved when the panel is
  * closed.
@@ -973,6 +975,7 @@ MdPanelRef.prototype.detach = function() {
  * Destroys the panel. The Panel cannot be opened again after this.
  */
 MdPanelRef.prototype.destroy = function() {
+  this._config.scope.$destroy();
   this._config.locals = null;
 };
 
@@ -1129,7 +1132,10 @@ MdPanelRef.prototype._createPanel = function() {
 
           if (self._config['disableParentScroll']) {
             self._restoreScroll = self._$mdUtil.disableScrollAround(
-                null, self._panelContainer);
+              null,
+              self._panelContainer,
+              { disableScrollMask: true }
+            );
           }
 
           self._panelEl = angular.element(
@@ -1207,12 +1213,12 @@ MdPanelRef.prototype._updatePosition = function(opt_init) {
 
   if (positionConfig) {
     positionConfig._setPanelPosition(this._panelEl);
-    
+
     // Hide the panel now that position is known.
     if (opt_init) {
       this._panelContainer.addClass(MD_PANEL_HIDDEN);
     }
-    
+
     this._panelEl.css('top', positionConfig.getTop());
     this._panelEl.css('bottom', positionConfig.getBottom());
     this._panelEl.css('left', positionConfig.getLeft());
@@ -1232,7 +1238,7 @@ MdPanelRef.prototype._updatePosition = function(opt_init) {
 MdPanelRef.prototype._focusOnOpen = function() {
   if (this._config['focusOnOpen']) {
     // Wait for the template to finish rendering to guarantee md-autofocus has
-    // finished adding the class _md-autofocus, otherwise the focusable element
+    // finished adding the class md-autofocus, otherwise the focusable element
     // isn't available to focus.
     var self = this;
     this._$rootScope['$$postDigest'](function() {
@@ -1294,7 +1300,7 @@ MdPanelRef.prototype._removeEventListeners = function() {
   this._removeListeners && this._removeListeners.forEach(function(removeFn) {
     removeFn();
   });
-  this._removeListeners = null;
+  this._removeListeners = [];
 };
 
 

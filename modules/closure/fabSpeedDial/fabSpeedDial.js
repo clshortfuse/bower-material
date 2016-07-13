@@ -52,7 +52,7 @@ goog.require('ng.material.core');
       resetActionIndex();
 
       // Add an animations waiting class so we know not to run
-      $element.addClass('_md-animations-waiting');
+      $element.addClass('md-animations-waiting');
     }
 
     function setupListeners() {
@@ -152,7 +152,7 @@ goog.require('ng.material.core');
         // Fire our animation
         $animate.addClass($element, '_md-animations-ready').then(function() {
           // Remove the waiting class
-          $element.removeClass('_md-animations-waiting');
+          $element.removeClass('md-animations-waiting');
         });
       }
 
@@ -428,7 +428,7 @@ goog.require('ng.material.core');
 
     function runAnimation(element) {
       // Don't run if we are still waiting and we are not ready
-      if (element.hasClass('_md-animations-waiting') && !element.hasClass('_md-animations-ready')) {
+      if (element.hasClass('md-animations-waiting') && !element.hasClass('_md-animations-ready')) {
         return;
       }
 

@@ -4,6 +4,10 @@
  * @license MIT
  * v1.1.0-rc.5
  */
+/**
+ * Mixin to create a primary checkbox.
+ * Used by the checkbox and select component.
+ */
 /*
 *
 *  Responsive attributes

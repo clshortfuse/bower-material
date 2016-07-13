@@ -4,12 +4,11 @@
  * @license MIT
  * v1.1.0-rc.5
  */
-/*  Only used with Theme processes */
-html.md-THEME_NAME-theme, body.md-THEME_NAME-theme {
-  color: '{{foreground-1}}';
-  background-color: '{{background-color}}'; }
-
+/**
+ * Mixin to create a primary checkbox.
+ * Used by the checkbox and select component.
+ */
 md-tooltip.md-THEME_NAME-theme {
   color: '{{background-A100}}'; }
-  md-tooltip.md-THEME_NAME-theme ._md-content {
+  md-tooltip.md-THEME_NAME-theme .md-content {
     background-color: '{{foreground-2}}'; }
